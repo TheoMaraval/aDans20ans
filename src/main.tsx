@@ -1,4 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import App from './ui/App';
 import './index.css';
-ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><div className="p-6 text-2xl">Patrimoine</div></React.StrictMode>);
+
+ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><App /></React.StrictMode>);
