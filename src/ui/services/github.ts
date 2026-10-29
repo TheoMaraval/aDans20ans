@@ -75,3 +75,15 @@ export async function checkAccess(ref: RepoRef, token: string): Promise<boolean>
   const j = await (await gh(token, `/repos/${ref.owner}/${ref.repo}`)).json();
   return !!j.permissions?.push;
 }
+
+/** Lance un workflow (déclencheur workflow_dispatch). Le token doit avoir la permission « Actions : Read and write ». */
+export async function dispatchWorkflow(ref: RepoRef, token: string, workflow: string): Promise<void> {
+  try {
+    await gh(token, `/repos/${ref.owner}/${ref.repo}/actions/workflows/${workflow}/dispatches`, { method: 'POST', body: JSON.stringify({ ref: ref.branch }) });
+  } catch (e) {
+    if (e instanceof GithubError && (e.status === 403 || e.status === 404)) {
+      throw new GithubError(e.status, 'Le token ne peut pas lancer les Actions : sur GitHub, modifie-le et ajoute la permission « Actions : Read and write ».');
+    }
+    throw e;
+  }
+}

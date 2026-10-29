@@ -46,7 +46,7 @@ Ce que tu peux suivre :
    - `MAIL_TO` : l'adresse qui reçoit le récap.
    - (facultatif) `SMTP_HOST` / `SMTP_PORT` pour un autre fournisseur (défaut `smtp.gmail.com` / `465`).
 4. **Ouvrir** `https://<pseudo>.github.io/finaryPerso/` puis **Créer ton patrimoine** avec la même passphrase.
-5. **Créer un token** : GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Choisir *Only select repositories* (ce dépôt) et *Repository permissions → Contents : Read and write*. Le coller dans l'app (Réglages → GitHub) puis **Enregistrer la connexion**. Il est rangé chiffré dans ton patrimoine : **à saisir une seule fois**, il suit sur tous tes appareils.
+5. **Créer un token** : GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Choisir *Only select repositories* (ce dépôt) et *Repository permissions → Contents : Read and write* **et** *Actions : Read and write* (cette dernière sert au bouton « Actualiser » des cours). Le coller dans l'app (Réglages → GitHub) puis **Enregistrer la connexion**. Il est rangé chiffré dans ton patrimoine : **à saisir une seule fois**, il suit sur tous tes appareils.
 6. **Saisir** tes comptes, actifs, transactions, DCA, biens et prêts, puis appuyer sur le bouton **Enregistrer** (icône disquette). Un commit est créé et le site est mis à jour en ~1 min.
 7. Lancer une première fois Actions → **Cours** → *Run workflow* pour charger l'historique des cours.
 8. **Sur le téléphone** : ouvrir l'URL → Partager → *Sur l'écran d'accueil* (iOS) ou *Installer l'application* (Android).
@@ -100,7 +100,7 @@ Structure :
 
 ## Limites
 
-- Cours retardés de ~15 à 45 min (Yahoo + cadence de l'Action toutes les 30 min en semaine).
+- Actions/ETF : cours retardés de ~15 à 45 min (Yahoo + Action toutes les 30 min en semaine, 8h-23h). Le bouton **Actualiser** (Accueil ou barre latérale) lance l'Action à la demande, avec ~1 à 2 min d'attente. L'app recharge seule les nouveaux cours toutes les 5 min. La crypto est en direct (CoinGecko, toutes les 60 s).
 - L'API Yahoo utilisée n'est pas officielle : elle peut changer. Les erreurs apparaissent dans l'app et dans le mail.
 - Historique crypto limité à 365 jours (API publique CoinGecko).
 - Intérêts des livrets estimés simplement (pas la règle exacte des quinzaines).

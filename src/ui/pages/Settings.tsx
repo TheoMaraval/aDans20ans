@@ -50,7 +50,7 @@ export default function Settings() {
     { key: 'owner', label: 'Propriétaire du dépôt', type: 'text', placeholder: loc?.owner ?? 'mon-pseudo' },
     { key: 'repo', label: 'Nom du dépôt', type: 'text', placeholder: loc?.repo ?? 'finaryPerso' },
     { key: 'branch', label: 'Branche', type: 'text', required: true },
-    { key: 'token', label: 'Token GitHub (fine-grained)', type: 'password', hint: 'GitHub → Settings → Developer settings → Fine-grained tokens → Only select repositories : ce dépôt → Repository permissions : Contents = Read and write. Rangé chiffré dans ton patrimoine : à saisir une seule fois, il suit sur tous tes appareils.' },
+    { key: 'token', label: 'Token GitHub (fine-grained)', type: 'password', hint: 'GitHub → Settings → Developer settings → Fine-grained tokens → Only select repositories : ce dépôt → Repository permissions : Contents = Read and write, et Actions = Read and write (pour le bouton « Actualiser » des cours). Rangé chiffré dans ton patrimoine : à saisir une seule fois, il suit sur tous tes appareils.' },
   ];
 
   return (

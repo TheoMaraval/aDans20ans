@@ -3,7 +3,7 @@ import { createSessionKey, decryptJson, encryptJson, unlockSessionKey, DEFAULT_I
 import { emptyPriceFile, type PriceFile, type Quote } from '../../core/prices';
 import { parseVault } from '../../core/schema';
 import type { Vault } from '../../core/types';
-import { commitFiles, getFile, repoFromLocation, putFile, type RepoRef } from '../services/github';
+import { commitFiles, dispatchWorkflow, getFile, repoFromLocation, putFile, type RepoRef } from '../services/github';
 import { fetchPagesFile } from '../services/pages';
 import { clearToken, loadToken, storeToken } from '../services/token';
 import { toast } from './ui';
@@ -18,6 +18,8 @@ interface AppState {
   baseJson?: string;
   prices: PriceFile; live: Record<string, Quote>;
   dirty: number; saving: boolean; token?: string; hide: boolean;
+  /** Action « Cours » lancée depuis l'app, en attente du nouveau fichier de cours */
+  pricesRefreshing: boolean;
   /** remote : version GitHub lisible mais modifiée ailleurs ; unreadable : chiffrée avec une autre passphrase */
   conflict?: { remote?: Vault; unreadable?: boolean };
 
@@ -30,6 +32,10 @@ interface AppState {
   save(force?: boolean): Promise<void>;
   resolveConflict(choice: 'overwrite' | 'reload'): Promise<void>;
   syncRemote(): Promise<void>;
+  /** Recharge le fichier de cours le plus récent (API GitHub si token, sinon site). true si plus récent. */
+  reloadPrices(): Promise<boolean>;
+  /** Lance l'Action « Cours » puis attend le nouveau fichier. */
+  requestPricesRefresh(opts?: { pollMs?: number; maxPolls?: number }): Promise<void>;
   setToken(token?: string): Promise<void>;
   setHide(h: boolean): void;
   setLive(q: Record<string, Quote>): void;
@@ -46,7 +52,7 @@ const VAULT = 'data/vault.enc';
 const PRICES = 'data/prices.enc';
 
 export const useApp = create<AppState>((set, get) => ({
-  status: 'boot', prices: emptyPriceFile(), live: {}, dirty: 0, saving: false, hide: false,
+  status: 'boot', prices: emptyPriceFile(), live: {}, dirty: 0, saving: false, hide: false, pricesRefreshing: false,
 
   repo() {
     const g = get().vault?.settings.github;
@@ -145,6 +151,39 @@ export const useApp = create<AppState>((set, get) => ({
       }
     } catch (e) {
       toast('err', `Synchronisation GitHub : ${e instanceof Error ? e.message : e}`);
+    }
+  },
+
+  async reloadPrices() {
+    const { sk, token } = get();
+    const ref = get().repo();
+    if (!sk) return false;
+    let env: Envelope | null = null;
+    if (token && ref) { const f = await getFile(ref, token, PRICES); env = f ? (JSON.parse(f.text) as Envelope) : null; }
+    else env = await fetchPagesFile(PRICES);
+    if (!env) return false;
+    const p = await openPrices(sk, env);
+    if (!p.updatedAt || p.updatedAt === get().prices.updatedAt) return false;
+    set({ prices: p, pricesEnv: env });
+    return true;
+  },
+
+  async requestPricesRefresh({ pollMs = 20_000, maxPolls = 18 } = {}) {
+    const { token } = get();
+    const ref = get().repo();
+    if (!token || !ref) throw new Error("Configure le token GitHub dans Réglages pour lancer l'actualisation.");
+    await dispatchWorkflow(ref, token, 'refresh-prices.yml');
+    toast('info', 'Actualisation lancée : environ 1 à 2 minutes…');
+    set({ pricesRefreshing: true });
+    try {
+      for (let i = 0; i < maxPolls; i++) {
+        await new Promise((r) => setTimeout(r, pollMs));
+        if (get().status !== 'ready') return;
+        if (await get().reloadPrices().catch(() => false)) { toast('ok', 'Cours actualisés ✔'); return; }
+      }
+      if (maxPolls) toast('info', "L'Action « Cours » tourne encore : les cours apparaîtront à la prochaine actualisation.");
+    } finally {
+      set({ pricesRefreshing: false });
     }
   },
 

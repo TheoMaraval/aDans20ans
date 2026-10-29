@@ -86,3 +86,13 @@ export function useBeforeUnload(): void {
     return () => window.removeEventListener('beforeunload', h);
   }, [dirty]);
 }
+
+/** Recharge les cours (fichier mis à jour par l'Action) toutes les 5 min et au retour sur l'app. */
+export function useAutoPrices(): void {
+  useEffect(() => {
+    const tick = () => { if (!document.hidden) void useApp.getState().reloadPrices().catch(() => undefined); };
+    const id = window.setInterval(tick, 5 * 60_000);
+    document.addEventListener('visibilitychange', tick);
+    return () => { clearInterval(id); document.removeEventListener('visibilitychange', tick); };
+  }, []);
+}

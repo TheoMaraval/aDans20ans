@@ -2,7 +2,7 @@ import { lazy, Suspense, useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Toasts } from './components/Toasts';
-import { useAutoLock, useBeforeUnload, useLivePrices } from './hooks';
+import { useAutoLock, useAutoPrices, useBeforeUnload, useLivePrices } from './hooks';
 import { useApp } from './store/app';
 import Unlock from './pages/Unlock';
 
@@ -20,6 +20,7 @@ const More = lazy(() => import('./pages/More'));
 function Ready() {
   useAutoLock();
   useLivePrices();
+  useAutoPrices();
   useBeforeUnload();
   return (
     <HashRouter>

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createSessionKey, encryptJson } from '../../core/crypto';
 import { emptyVault } from '../../core/defaults';
+import { emptyPriceFile } from '../../core/prices';
 
 vi.mock('../services/pages', () => ({ fetchPagesFile: vi.fn() }));
 import { fetchPagesFile } from '../services/pages';
@@ -72,6 +73,45 @@ describe('repartir de zéro quand le patrimoine distant est illisible', () => {
     expect(put && JSON.parse(put.body!).sha).toBe('old');
     expect(useApp.getState().dirty).toBe(0);
     expect(useApp.getState().conflict).toBeUndefined();
+    vi.unstubAllGlobals();
+  });
+});
+
+describe('cours : rechargement et déclenchement de l\'Action', () => {
+  beforeEach(() => useApp.setState(useApp.getInitialState(), true));
+  const setup = async () => {
+    await useApp.getState().createNew('une passphrase de test assez longue', emptyVault(), 1000);
+    useApp.setState({ token: 't', dirty: 0 });
+    useApp.getState().mutate((v) => { v.settings.github = { owner: 'o', repo: 'r', branch: 'main' }; });
+    return useApp.getState().sk!;
+  };
+
+  it('reloadPrices charge une version plus récente depuis GitHub', async () => {
+    const sk = await setup();
+    const env = await encryptJson(sk, { ...emptyPriceFile(), updatedAt: '2026-10-30T08:00:00Z', quotes: { X: { price: 1, currency: 'EUR', asOf: 'a' } } });
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ sha: 's', encoding: 'base64', content: btoa(JSON.stringify(env)) }), { status: 200 })));
+    expect(await useApp.getState().reloadPrices()).toBe(true);
+    expect(useApp.getState().prices.updatedAt).toBe('2026-10-30T08:00:00Z');
+    expect(await useApp.getState().reloadPrices()).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it('requestPricesRefresh lance le workflow Cours', async () => {
+    await setup();
+    const f = vi.fn(async (_u: string, _i?: RequestInit) => new Response(null, { status: 204 }));
+    vi.stubGlobal('fetch', f);
+    await useApp.getState().requestPricesRefresh({ pollMs: 0, maxPolls: 0 });
+    const [url, init] = f.mock.calls[0];
+    expect(url).toContain('/repos/o/r/actions/workflows/refresh-prices.yml/dispatches');
+    expect(init?.method).toBe('POST');
+    expect(JSON.parse(String(init?.body))).toEqual({ ref: 'main' });
+    vi.unstubAllGlobals();
+  });
+
+  it('token sans permission Actions : message explicite', async () => {
+    await setup();
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 403 })));
+    await expect(useApp.getState().requestPricesRefresh({ pollMs: 0, maxPolls: 0 })).rejects.toThrow(/Actions/);
     vi.unstubAllGlobals();
   });
 });

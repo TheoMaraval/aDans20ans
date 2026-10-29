@@ -6,10 +6,10 @@ import { scheduleDates } from '../../core/dca';
 import { externalFlows, periodChange } from '../../core/performance';
 import { ASSET_CLASS_LABELS, BALANCE_ACCOUNT_TYPES, GROUP_LABELS, type AssetClass, type GroupKey } from '../../core/types';
 import { Donut, NetWorthChart } from '../components/charts';
+import { PricesStatus } from '../components/PricesStatus';
 import { AlertItem, Button, Card, Delta, Empty, PageHeader, Row, SectionTitle, Tabs } from '../components/ui';
 import { useEngine, useFmt, useHistory } from '../hooks';
-import { dateFr, dateTimeFr, pct } from '../lib/format';
-import { useApp } from '../store/app';
+import { dateFr, pct } from '../lib/format';
 
 type Range = '1S' | '1M' | 'YTD' | '1A' | 'MAX';
 const RANGES: { value: Range; label: string }[] = [{ value: '1S', label: '1S' }, { value: '1M', label: '1M' }, { value: 'YTD', label: 'YTD' }, { value: '1A', label: '1A' }, { value: 'MAX', label: 'Max' }];
@@ -20,7 +20,6 @@ export default function Home() {
   const e = useEngine();
   const f = useFmt();
   const history = useHistory();
-  const updatedAt = useApp((s) => s.prices.updatedAt);
   const [range, setRange] = useState<Range>('1A');
   const [split, setSplit] = useState<'class' | 'group'>('class');
   const cur = e.current;
@@ -59,7 +58,7 @@ export default function Home() {
           {change && <Delta value={change.changeExFlows}>{f.signed(change.changeExFlows)} ({pct(change.pct)})</Delta>}
           {change && <span className="text-mute">hors apports · {f.signed(change.flows)} apportés</span>}
         </div>
-        <div className="mt-1 text-xs text-mute">Brut {f.eur(cur.gross)} · Dettes {f.eur(cur.debts)} · Cours du {dateTimeFr(updatedAt || undefined)}</div>
+        <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-mute">Brut {f.eur(cur.gross)} · Dettes {f.eur(cur.debts)} · <PricesStatus /></div>
       </section>
 
       <Card className="mb-4">

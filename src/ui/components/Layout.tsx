@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useApp } from '../store/app';
 import { useUi } from '../store/ui';
-import { dateTimeFr } from '../lib/format';
 import { Button } from './ui';
+import { PricesStatus } from './PricesStatus';
 import { Sheet } from './Sheet';
 import { CarIcon, ChartIcon, DebtIcon, EyeIcon, EyeOffIcon, GearIcon, HomeIcon, HouseIcon, ListIcon, LockIcon, MoonIcon, MoreIcon, PiggyIcon, RepeatIcon, SaveIcon, SunIcon } from './icons';
 
@@ -59,14 +59,13 @@ function ConflictSheet() {
 }
 
 export function Layout({ children }: { children: ReactNode }) {
-  const updatedAt = useApp((s) => s.prices.updatedAt);
   const link = ({ isActive }: { isActive: boolean }) => `flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition ${isActive ? 'bg-accent/15 text-accent' : 'text-mute hover:bg-surface2 hover:text-ink'}`;
   return (
     <div className="min-h-dvh md:flex">
       <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-surface p-4 md:flex">
         <div className="mb-6 flex items-center gap-2 px-2 text-lg font-bold"><img src="icon.svg" alt="" className="h-7 w-7" />Patrimoine</div>
         <nav className="flex flex-1 flex-col gap-1">{NAV.map((n) => <NavLink key={n.to} to={n.to} end={n.to === '/'} className={link}><n.icon />{n.label}</NavLink>)}</nav>
-        <div className="mb-2 px-2 text-xs text-mute">Cours : {dateTimeFr(updatedAt || undefined)}</div>
+        <PricesStatus className="mb-2 px-2 text-xs text-mute" />
         <Actions />
       </aside>
       <div className="min-w-0 flex-1">
