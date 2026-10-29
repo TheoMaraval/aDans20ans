@@ -47,7 +47,7 @@ export function Donut({ data, hide }: { data: { key: string; label: string; valu
   const items = data.filter((d) => d.value > 0).sort((a, b) => b.value - a.value);
   const total = items.reduce((s, d) => s + d.value, 0);
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row">
+    <div className="flex flex-col items-center gap-4 2xl:flex-row">
       <div className="h-44 w-44 shrink-0">
         <ResponsiveContainer>
           <PieChart>
@@ -57,13 +57,13 @@ export function Donut({ data, hide }: { data: { key: string; label: string; valu
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <ul className="w-full space-y-1.5 text-sm">
+      <ul className="w-full min-w-0 flex-1 space-y-1.5 text-sm">
         {items.map((d, i) => (
-          <li key={d.key} className="flex items-center gap-2">
+          <li key={d.key} className="flex min-w-0 items-center gap-2">
             <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: SERIES[i % SERIES.length] }} />
-            <span className="flex-1 truncate">{d.label}</span>
-            <span className="num text-mute">{total ? Math.round((d.value / total) * 100) : 0} %</span>
-            <span className="num w-24 text-right">{eur(d.value, hide)}</span>
+            <span className="min-w-0 flex-1 truncate">{d.label}</span>
+            <span className="num shrink-0 text-mute">{total ? Math.round((d.value / total) * 100) : 0} %</span>
+            <span className="num shrink-0 text-right">{eur(d.value, hide)}</span>
           </li>
         ))}
       </ul>

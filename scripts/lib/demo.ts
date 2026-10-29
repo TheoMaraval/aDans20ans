@@ -20,6 +20,7 @@ export function demoVault(today: ISODate): Vault {
   ];
   v.instruments = [
     { id: 'cw8', name: 'Amundi MSCI World', kind: 'ETF', assetClass: 'ACTIONS', currency: 'EUR', yahooSymbol: 'CW8.PA', isin: 'LU1681043599' },
+    { id: 'wpea', name: 'iShares MSCI World PEA', kind: 'ETF', assetClass: 'ACTIONS', currency: 'EUR', yahooSymbol: 'WPEA.PA', isin: 'IE0002XZSHO1' },
     { id: 'ese', name: 'BNP S&P 500', kind: 'ETF', assetClass: 'ACTIONS', currency: 'EUR', yahooSymbol: 'ESE.PA', isin: 'FR0011550185' },
     { id: 'aapl', name: 'Apple', kind: 'STOCK', assetClass: 'ACTIONS', currency: 'USD', yahooSymbol: 'AAPL' },
     { id: 'mc', name: 'LVMH', kind: 'STOCK', assetClass: 'ACTIONS', currency: 'EUR', yahooSymbol: 'MC.PA' },
@@ -37,7 +38,7 @@ export function demoVault(today: ISODate): Vault {
     { id: 'b4', accountId: 'crypto', date: y2, type: 'BUY', instrumentId: 'eth', quantity: 1, unitPrice: 1700 },
   ];
   v.dcaPlans = [
-    { id: 'dca-cw8', name: 'MSCI World mensuel', accountId: 'pea', instrumentId: 'cw8', amount: 300, frequency: 'MONTHLY', dayOfMonth: 5, startDate: y2, fractional: false, expectedAnnualReturn: 0.07 },
+    { id: 'dca-wpea', name: 'MSCI World mensuel', accountId: 'pea', instrumentId: 'wpea', amount: 300, frequency: 'MONTHLY', dayOfMonth: 5, startDate: y2, fractional: false, expectedAnnualReturn: 0.07 },
     { id: 'dca-ese', name: 'S&P 500 mensuel', accountId: 'pea', instrumentId: 'ese', amount: 150, frequency: 'MONTHLY', dayOfMonth: 5, startDate: y1, fractional: false, expectedAnnualReturn: 0.08 },
     { id: 'dca-btc', name: 'Bitcoin hebdo', accountId: 'crypto', instrumentId: 'btc', amount: 25, frequency: 'WEEKLY', dayOfWeek: 1, startDate: y1, fractional: true, feesPct: 0.01, expectedAnnualReturn: 0.1 },
   ];

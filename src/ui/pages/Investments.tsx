@@ -80,9 +80,9 @@ export default function Investments() {
                   <thead className="text-left text-xs text-mute"><tr className="border-b border-line">
                     {['Actif', 'Qté', 'PRU', 'Cours', 'Valeur', '+/- value', 'Jour', 'Poids'].map((h, i) => <th key={h} className={`px-4 py-3 font-medium ${i ? 'text-right' : ''}`}>{h}</th>)}
                   </tr></thead>
-                  <tbody>{positions.map((p) => (
+                  <tbody className="whitespace-nowrap">{positions.map((p) => (
                     <tr key={p.accountId + p.instrumentId} onClick={() => setSheet({ k: 'pos', p })} className="cursor-pointer border-b border-line last:border-0 hover:bg-surface2/50">
-                      <td className="px-4 py-3"><div className="font-medium">{p.name}</div>{sel === 'all' && <div className="text-xs text-mute">{accounts.find((a) => a.id === p.accountId)?.name}</div>}</td>
+                      <td className="whitespace-normal px-4 py-3"><div className="font-medium">{p.name}</div>{sel === 'all' && <div className="text-xs text-mute">{accounts.find((a) => a.id === p.accountId)?.name}</div>}</td>
                       <td className="num px-4 text-right">{qty(p.quantity)}</td>
                       <td className="num px-4 text-right">{f.eur(p.pru, true)}</td>
                       <td className="num px-4 text-right">{f.money(p.price, p.currency)}{p.priceSource !== 'live' && p.priceSource !== 'quote' && p.priceSource !== 'close' && <Badge tone="warn">{p.priceSource === 'manual' ? 'manuel' : 'ancien'}</Badge>}</td>
