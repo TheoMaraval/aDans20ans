@@ -43,11 +43,16 @@ function ConflictSheet() {
   const resolve = useApp((s) => s.resolveConflict);
   if (!conflict) return null;
   return (
-    <Sheet open onClose={() => useApp.setState({ conflict: undefined })} title="Conflit d'enregistrement">
-      <p className="mb-4 text-sm text-mute">Le patrimoine a été modifié sur GitHub (autre appareil) depuis ton dernier chargement.</p>
+    <Sheet open onClose={() => useApp.setState({ conflict: undefined })} title={conflict.unreadable ? 'Remplacer le patrimoine existant ?' : 'Conflit d\'enregistrement'}>
+      {conflict.unreadable ? (
+        <p className="mb-4 text-sm text-mute">Le patrimoine enregistré sur GitHub est chiffré avec <b>une autre passphrase</b> : il ne peut pas être lu avec la tienne. L'écraser le remplace par ta version (l'ancien reste dans l'historique Git, mais il faudra son ancienne passphrase pour l'ouvrir).</p>
+      ) : (
+        <p className="mb-4 text-sm text-mute">Le patrimoine a été modifié sur GitHub (autre appareil) depuis ton dernier chargement.</p>
+      )}
       <div className="flex flex-col gap-2">
         <Button variant="danger" onClick={() => resolve('overwrite')}>Écraser avec ma version</Button>
-        <Button onClick={() => resolve('reload')}>Recharger la version GitHub (perdre mes modifs)</Button>
+        {conflict.remote && <Button onClick={() => resolve('reload')}>Recharger la version GitHub (perdre mes modifs)</Button>}
+        {conflict.unreadable && <Button onClick={() => useApp.setState({ conflict: undefined })}>Annuler</Button>}
       </div>
     </Sheet>
   );

@@ -46,3 +46,32 @@ describe('store app', () => {
     expect(useApp.getState().vault).toBeUndefined();
   });
 });
+
+describe('repartir de zéro quand le patrimoine distant est illisible', () => {
+  beforeEach(() => useApp.setState(useApp.getInitialState(), true));
+
+  it('enregistrer signale le conflit, puis « écraser » remplace le fichier distant', async () => {
+    const other = await createSessionKey('ancienne passphrase oubliee xyz', 1000);
+    const remoteEnv = await encryptJson(other, emptyVault());
+    const calls: { method: string; body?: string }[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+      calls.push({ method: init?.method ?? 'GET', body: init?.body as string | undefined });
+      if (init?.method === 'PUT') return new Response(JSON.stringify({ content: { sha: 'new' } }), { status: 200 });
+      return new Response(JSON.stringify({ sha: 'old', encoding: 'base64', content: btoa(JSON.stringify(remoteEnv)) }), { status: 200 });
+    }));
+    await useApp.getState().createNew('nouvelle passphrase bien longue', emptyVault(), 1000);
+    useApp.setState({ token: 't' });
+    useApp.getState().mutate((v) => { v.settings.github = { owner: 'o', repo: 'r', branch: 'main' }; });
+
+    await useApp.getState().save();
+    expect(useApp.getState().conflict).toMatchObject({ unreadable: true });
+    expect(calls.some((c) => c.method === 'PUT')).toBe(false);
+
+    await useApp.getState().resolveConflict('overwrite');
+    const put = calls.find((c) => c.method === 'PUT');
+    expect(put && JSON.parse(put.body!).sha).toBe('old');
+    expect(useApp.getState().dirty).toBe(0);
+    expect(useApp.getState().conflict).toBeUndefined();
+    vi.unstubAllGlobals();
+  });
+});

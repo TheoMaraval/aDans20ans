@@ -18,7 +18,8 @@ interface AppState {
   baseJson?: string;
   prices: PriceFile; live: Record<string, Quote>;
   dirty: number; saving: boolean; token?: string; hide: boolean;
-  conflict?: { remote: Vault };
+  /** remote : version GitHub lisible mais modifiée ailleurs ; unreadable : chiffrée avec une autre passphrase */
+  conflict?: { remote?: Vault; unreadable?: boolean };
 
   boot(): Promise<void>;
   unlock(pass: string): Promise<void>;
@@ -26,7 +27,7 @@ interface AppState {
   lock(force?: boolean): void;
   mutate(fn: (v: Vault) => void): void;
   replaceVault(v: Vault): void;
-  save(): Promise<void>;
+  save(force?: boolean): Promise<void>;
   resolveConflict(choice: 'overwrite' | 'reload'): Promise<void>;
   syncRemote(): Promise<void>;
   setToken(token?: string): Promise<void>;
@@ -89,7 +90,7 @@ export const useApp = create<AppState>((set, get) => ({
 
   replaceVault(v) { set((s) => ({ vault: parseVault(v), dirty: s.dirty + 1 })); },
 
-  async save() {
+  async save(force = false) {
     const { sk, vault, token } = get();
     const ref = get().repo();
     if (!sk || !vault) return;
@@ -97,9 +98,10 @@ export const useApp = create<AppState>((set, get) => ({
     set({ saving: true });
     try {
       const remote = await getFile(ref, token, VAULT);
-      if (remote) {
-        const env = JSON.parse(remote.text) as Envelope;
-        const remoteVault = parseVault(await decryptJson(sk, env));
+      if (remote && !force) {
+        let remoteVault: Vault;
+        try { remoteVault = parseVault(await decryptJson(sk, JSON.parse(remote.text) as Envelope)); }
+        catch { set({ conflict: { unreadable: true } }); return; }
         if (JSON.stringify(remoteVault) !== get().baseJson) { set({ conflict: { remote: remoteVault } }); return; }
       }
       const env = await encryptJson(sk, vault);
@@ -116,12 +118,12 @@ export const useApp = create<AppState>((set, get) => ({
   async resolveConflict(choice) {
     const c = get().conflict;
     if (!c) return;
-    if (choice === 'reload') {
+    if (choice === 'reload' && c.remote) {
       set({ vault: c.remote, baseJson: JSON.stringify(c.remote), dirty: 0, conflict: undefined });
       toast('info', 'Version GitHub rechargée');
-    } else {
-      set({ baseJson: JSON.stringify(c.remote), conflict: undefined });
-      await get().save();
+    } else if (choice === 'overwrite') {
+      set({ conflict: undefined });
+      await get().save(true);
     }
   },
 
