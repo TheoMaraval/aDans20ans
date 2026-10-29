@@ -64,7 +64,7 @@ export const useApp = create<AppState>((set, get) => ({
     const sk = await unlockSessionKey(pass, env);
     const vault = parseVault(await decryptJson(sk, env));
     const prices = await openPrices(sk, get().pricesEnv);
-    const token = await loadToken(sk);
+    const token = vault.settings.github.token || (await loadToken(sk));
     set({ sk, vault, baseJson: JSON.stringify(vault), prices, token, status: 'ready', dirty: 0, hide: vault.settings.hideAmountsByDefault });
     if (token) void get().syncRemote();
   },

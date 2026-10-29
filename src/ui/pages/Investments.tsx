@@ -46,7 +46,7 @@ export default function Investments() {
       </>} />
 
       {!accounts.length ? (
-        <Empty title="Aucun compte d'investissement" action={<div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={() => setSheet({ k: 'import' })}>Importer Trade Republic</Button><Button onClick={() => setSheet({ k: 'account' })}>Créer un compte</Button></div>}>PEA, CTO, assurance-vie, PER, crypto… Tu peux aussi importer ton export CSV Trade Republic.</Empty>
+        <Empty title="Aucun compte d'investissement" action={<div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={() => setSheet({ k: 'import' })}>Importer Trade Republic / Kraken</Button><Button onClick={() => setSheet({ k: 'account' })}>Créer un compte</Button></div>}>PEA, CTO, assurance-vie, PER, crypto… Tu peux aussi importer tes exports CSV Trade Republic ou Kraken.</Empty>
       ) : (
         <>
           <div className="mb-4"><Tabs options={[{ value: 'all', label: 'Tous' }, ...accounts.map((a) => ({ value: a.id, label: a.name }))]} value={sel} onChange={setSel} /></div>

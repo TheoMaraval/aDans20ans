@@ -21,7 +21,7 @@ Ce que tu peux suivre :
 | Tes données (`data/vault.enc`) et les cours (`data/prices.enc`) | Dépôt + site | **Chiffrés** AES-256-GCM, clé dérivée de ta passphrase (PBKDF2-SHA256, 600 000 itérations) |
 | Dates des commits | Dépôt | Public |
 | Passphrase | Ta tête + secret GitHub `VAULT_PASSPHRASE` | Privé |
-| Token GitHub d'écriture | `localStorage` de chaque appareil, **chiffré** avec ta passphrase | Privé |
+| Token GitHub d'écriture (ce dépôt uniquement) | Dans `vault.enc`, **chiffré** avec tes données | Privé |
 
 - Le déchiffrement se fait **uniquement dans ton navigateur**. La clé ne vit qu'en mémoire et l'app se verrouille après inactivité.
 - Une CSP stricte bloque tout script tiers ; aucune analytics, aucun CDN.
@@ -46,10 +46,10 @@ Ce que tu peux suivre :
    - `MAIL_TO` : l'adresse qui reçoit le récap.
    - (facultatif) `SMTP_HOST` / `SMTP_PORT` pour un autre fournisseur (défaut `smtp.gmail.com` / `465`).
 4. **Ouvrir** `https://<pseudo>.github.io/finaryPerso/` puis **Créer ton patrimoine** avec la même passphrase.
-5. **Créer un token** : GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Choisir *Only select repositories* (ce dépôt) et *Repository permissions → Contents : Read and write*. Le coller dans l'app (Réglages → GitHub) puis **Enregistrer la connexion**.
+5. **Créer un token** : GitHub → Settings → Developer settings → Fine-grained tokens → Generate. Choisir *Only select repositories* (ce dépôt) et *Repository permissions → Contents : Read and write*. Le coller dans l'app (Réglages → GitHub) puis **Enregistrer la connexion**. Il est rangé chiffré dans ton patrimoine : **à saisir une seule fois**, il suit sur tous tes appareils.
 6. **Saisir** tes comptes, actifs, transactions, DCA, biens et prêts, puis appuyer sur le bouton **Enregistrer** (icône disquette). Un commit est créé et le site est mis à jour en ~1 min.
 7. Lancer une première fois Actions → **Cours** → *Run workflow* pour charger l'historique des cours.
-8. **Sur le téléphone** : ouvrir l'URL → Partager → *Sur l'écran d'accueil* (iOS) ou *Installer l'application* (Android). Saisir le token une fois sur cet appareil aussi.
+8. **Sur le téléphone** : ouvrir l'URL → Partager → *Sur l'écran d'accueil* (iOS) ou *Installer l'application* (Android).
 
 Le mail part chaque dimanche vers 17h-18h (heure de Paris). Pour le tester tout de suite : Actions → **Mail hebdo** → *Run workflow*.
 
@@ -63,6 +63,15 @@ Dans l'app Trade Republic : Profil → Paramètres → Activité → **Exporter 
 - Les tickers Yahoo sont retrouvés automatiquement depuis l'ISIN par l'Action « Cours ». Les cotations dans une autre devise (USD, CHF…) sont converties en euros.
 - Si tu as déclaré un plan DCA, les achats réels importés proches d'une échéance (−3 à +10 jours) sont rattachés au plan au lieu d'être doublés.
 - Le fichier est lu uniquement dans ton navigateur.
+
+## Import Kraken
+
+Sur Kraken : Documents → Export → **Balances** (CSV). Puis dans le dashboard : Investissements → **Importer**.
+
+- Kraken ne fournit que des **soldes** : chaque import aligne le compte « Kraken » sur le fichier. Chaque écart devient un achat ou une vente d'ajustement au cours du jour, compensé par un apport ou un retrait.
+- Le staking (`ETH.S`…) est fusionné avec l'actif, les symboles Kraken (`XBT`, `ZEUR`…) sont normalisés, et le solde en euros devient les espèces du compte.
+- Réimporter le même fichier ne change rien. Un fichier plus récent n'ajoute que les écarts. Un actif absent du fichier est considéré comme vendu.
+- Le prix de revient des ajustements est le cours du jour de l'import. Tu peux le corriger dans Transactions.
 
 ## Tickers
 

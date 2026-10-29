@@ -50,7 +50,7 @@ export default function Settings() {
     { key: 'owner', label: 'Propriétaire du dépôt', type: 'text', placeholder: loc?.owner ?? 'mon-pseudo' },
     { key: 'repo', label: 'Nom du dépôt', type: 'text', placeholder: loc?.repo ?? 'finaryPerso' },
     { key: 'branch', label: 'Branche', type: 'text', required: true },
-    { key: 'token', label: 'Token GitHub (fine-grained)', type: 'password', hint: 'GitHub → Settings → Developer settings → Fine-grained tokens → Only select repositories : ce dépôt → Repository permissions : Contents = Read and write. Stocké chiffré sur cet appareil uniquement.' },
+    { key: 'token', label: 'Token GitHub (fine-grained)', type: 'password', hint: 'GitHub → Settings → Developer settings → Fine-grained tokens → Only select repositories : ce dépôt → Repository permissions : Contents = Read and write. Rangé chiffré dans ton patrimoine : à saisir une seule fois, il suit sur tous tes appareils.' },
   ];
 
   return (
@@ -61,12 +61,18 @@ export default function Settings() {
           <h2 className="mb-3 font-semibold">GitHub (enregistrement)</h2>
           <EntityForm fields={github} initial={{ ...s.github, token: token ?? '' }} submitLabel="Enregistrer la connexion"
             onSubmit={async (x) => {
-              mutate((d) => { d.settings.github = { owner: String(x.owner ?? ''), repo: String(x.repo ?? ''), branch: String(x.branch) }; });
-              await setToken(x.token ? String(x.token) : undefined);
+              const tok = x.token ? String(x.token).trim() : undefined;
+              mutate((d) => { d.settings.github = { owner: String(x.owner ?? ''), repo: String(x.repo ?? ''), branch: String(x.branch), token: tok }; });
+              await setToken(tok);
               const ref = useApp.getState().repo();
-              if (x.token && ref) {
-                try { const ok = await checkAccess(ref, String(x.token)); toast(ok ? 'ok' : 'err', ok ? 'Accès en écriture confirmé ✔' : 'Token sans droit d\'écriture sur ce dépôt'); }
-                catch (e) { toast('err', e instanceof Error ? e.message : String(e)); }
+              if (tok && ref) {
+                try {
+                  const ok = await checkAccess(ref, tok);
+                  if (!ok) { toast('err', 'Token sans droit d\'écriture sur ce dépôt'); return; }
+                  toast('ok', 'Accès en écriture confirmé ✔ Enregistrement…');
+                  // Le token est rangé dans le patrimoine chiffré : on enregistre pour le retrouver sur tous les appareils.
+                  await useApp.getState().save();
+                } catch (e) { toast('err', e instanceof Error ? e.message : String(e)); }
               }
             }} />
         </Card>
@@ -127,7 +133,7 @@ export default function Settings() {
         <Card>
           <h2 className="mb-3 font-semibold">Données</h2>
           <div className="flex flex-wrap gap-2">
-            <Button variant="primary" onClick={() => setImporting(true)}>Importer Trade Republic (CSV)</Button>
+            <Button variant="primary" onClick={() => setImporting(true)}>Importer Trade Republic / Kraken (CSV)</Button>
             <Button onClick={async () => download('vault.enc', JSON.stringify(await encryptJson(sk!, v)))}>Exporter (chiffré)</Button>
             <Button onClick={() => { if (confirm('Le fichier exporté sera EN CLAIR (non chiffré). Continuer ?')) download(`patrimoine-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(v, null, 2)); }}>Exporter (JSON clair)</Button>
             <label className="inline-flex cursor-pointer items-center rounded-xl bg-surface2 px-4 py-2.5 font-medium hover:bg-line">

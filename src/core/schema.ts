@@ -116,7 +116,11 @@ export const settingsSchema = z.object({
   emergencyFundAccountIds: z.array(id).default([]),
   hideAmountsByDefault: z.boolean().default(false),
   autoLockMinutes: z.number().int().min(1).default(10),
-  github: z.object({ owner: z.string().default(''), repo: z.string().default(''), branch: z.string().default('main') }).default({}),
+  github: z.object({
+    owner: z.string().default(''), repo: z.string().default(''), branch: z.string().default('main'),
+    /** Token fine-grained (Contents : écriture sur ce dépôt), chiffré avec le reste du vault : suit l'utilisateur sur tous ses appareils. */
+    token: z.string().optional(),
+  }).default({}),
 });
 
 export const vaultSchema = z.object({
