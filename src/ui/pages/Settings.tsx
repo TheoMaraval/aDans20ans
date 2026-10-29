@@ -8,6 +8,7 @@ import { PlusIcon } from '../components/icons';
 import { passphraseOk, usePassphraseScore } from '../lib/passphrase';
 import { checkAccess, repoFromLocation } from '../services/github';
 import { PriceAlertSheet } from '../sheets/EntitySheets';
+import { ImportSheet } from '../sheets/ImportSheet';
 import { useApp } from '../store/app';
 import { toast } from '../store/ui';
 
@@ -25,6 +26,7 @@ export default function Settings() {
   const v = vault!;
   const s = v.settings;
   const [alert, setAlert] = useState<null | { id?: string }>(null);
+  const [importing, setImporting] = useState(false);
   const [newPass, setNewPass] = useState('');
   const [newPass2, setNewPass2] = useState('');
   const score = usePassphraseScore(newPass);
@@ -125,6 +127,7 @@ export default function Settings() {
         <Card>
           <h2 className="mb-3 font-semibold">Données</h2>
           <div className="flex flex-wrap gap-2">
+            <Button variant="primary" onClick={() => setImporting(true)}>Importer Trade Republic (CSV)</Button>
             <Button onClick={async () => download('vault.enc', JSON.stringify(await encryptJson(sk!, v)))}>Exporter (chiffré)</Button>
             <Button onClick={() => { if (confirm('Le fichier exporté sera EN CLAIR (non chiffré). Continuer ?')) download(`patrimoine-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(v, null, 2)); }}>Exporter (JSON clair)</Button>
             <label className="inline-flex cursor-pointer items-center rounded-xl bg-surface2 px-4 py-2.5 font-medium hover:bg-line">
@@ -142,6 +145,7 @@ export default function Settings() {
       </div>
       <SectionTitle>À propos</SectionTitle>
       <p className="text-sm text-mute">Données chiffrées AES-256-GCM (PBKDF2 600 000 itérations), déchiffrées uniquement dans ce navigateur. Cours : Yahoo Finance (via GitHub Actions), CoinGecko, BCE.</p>
+      {importing && <ImportSheet onClose={() => setImporting(false)} />}
       {alert && <PriceAlertSheet alert={v.priceAlerts.find((a) => a.id === alert.id)} onClose={() => setAlert(null)} />}
     </>
   );

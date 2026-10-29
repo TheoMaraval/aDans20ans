@@ -20,7 +20,7 @@ export default function Dca() {
 
   const stats = (p: DcaPlan) => {
     const buys = e.transactions.filter((t) => t.dcaPlanId === p.id && t.type === 'BUY');
-    const invested = e.transactions.filter((t) => t.dcaPlanId === p.id && t.type === 'DEPOSIT').reduce((s, t) => s + (t.amount ?? 0), 0);
+    const invested = buys.reduce((s, t) => s + (t.quantity ?? 0) * (t.unitPrice ?? 0) * (t.fxRate ?? 1) + (t.fees ?? 0), 0);
     const units = buys.reduce((s, t) => s + (t.quantity ?? 0), 0);
     const pos = e.current.positions.find((x) => x.accountId === p.accountId && x.instrumentId === p.instrumentId);
     const value = pos ? units * pos.price * e.book.fxAt(pos.currency, e.today) : 0;

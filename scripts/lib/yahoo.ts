@@ -40,3 +40,12 @@ export async function fetchYahoo(f: FetchLike, symbol: string, from: ISODate): P
     closes,
   };
 }
+
+interface YahooSearch { quotes?: { symbol: string; exchange?: string; quoteType?: string }[] }
+/** Trouve le symbole Yahoo d'un ISIN : la cotation principale (Paris pour un ISIN français). */
+export async function searchYahooSymbol(f: FetchLike, isin: string): Promise<string | null> {
+  const j = await fetchJson<YahooSearch>(f, `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(isin)}&quotesCount=8&newsCount=0`);
+  const qs = (j.quotes ?? []).filter((q) => (q.quoteType === 'EQUITY' || q.quoteType === 'ETF') && !q.symbol.endsWith('.SG'));
+  const local = isin.startsWith('FR') ? qs.find((q) => q.symbol.endsWith('.PA')) : undefined;
+  return (local ?? qs[0])?.symbol ?? null;
+}

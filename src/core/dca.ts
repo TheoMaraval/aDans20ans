@@ -26,13 +26,21 @@ export function scheduleDates(plan: DcaPlan, from: ISODate | undefined, to: ISOD
 
 export interface ExpandResult { transactions: Transaction[]; pending: PendingDca[] }
 
-/** Transactions réelles + achats DCA virtuels + versements implicites. */
+/** Un achat réel du même actif sur le même compte dans cette fenêtre autour d'une échéance en tient lieu. */
+const MATCH_BEFORE = 3, MATCH_AFTER = 10;
+
+/**
+ * Transactions réelles + achats DCA virtuels + versements implicites.
+ * Les achats réels (saisis ou importés d'un courtier) proches d'une échéance sont rattachés au plan au lieu d'être doublés.
+ */
 export function expandTransactions(vault: Vault, book: PriceBook, today: ISODate): ExpandResult {
   const out: Transaction[] = [...vault.transactions];
   const pending: PendingDca[] = [];
   const instruments = new Map(vault.instruments.map((i) => [i.id, i]));
   const corrections = new Map<string, Transaction>();
   for (const t of vault.transactions) if (t.dcaPlanId && t.dcaDate) corrections.set(`${t.dcaPlanId}:${t.dcaDate}`, t);
+  const freeBuys = vault.transactions.filter((t) => t.type === 'BUY' && !t.dcaPlanId);
+  const matched = new Map<string, { dcaPlanId: string; dcaDate: ISODate }>();
 
   for (const plan of vault.dcaPlans) {
     const i = instruments.get(plan.instrumentId);
@@ -44,6 +52,9 @@ export function expandTransactions(vault: Vault, book: PriceBook, today: ISODate
         out.push(deposit(plan.id, d, plan.accountId, corr.date, (corr.quantity ?? 0) * (corr.unitPrice ?? 0) * fx + (corr.fees ?? 0)));
         continue;
       }
+      const lo = addDays(d, -MATCH_BEFORE), hi = addDays(d, MATCH_AFTER);
+      const real = freeBuys.find((t) => !matched.has(t.id) && t.accountId === plan.accountId && t.instrumentId === plan.instrumentId && t.date >= lo && t.date <= hi);
+      if (real) { matched.set(real.id, { dcaPlanId: plan.id, dcaDate: d }); continue; }
       const pp = book.closeOnOrAfter(i, d);
       if (!pp) { pending.push({ planId: plan.id, date: d }); continue; }
       const date = pp.asOf.slice(0, 10);
@@ -60,7 +71,7 @@ export function expandTransactions(vault: Vault, book: PriceBook, today: ISODate
       }
     }
   }
-  return { transactions: out, pending };
+  return { transactions: matched.size ? out.map((t) => (matched.has(t.id) ? { ...t, ...matched.get(t.id) } : t)) : out, pending };
 }
 
 function deposit(planId: Id, d: ISODate, accountId: Id, date: ISODate, amount: number): Transaction {

@@ -4,7 +4,7 @@ import { fetchCoingeckoHistory, fetchCoingeckoQuotes } from './lib/coingecko';
 import { DATA_DIR, openData, requireEnv, saveEncrypted } from './lib/files';
 import { fetchFx } from './lib/fx';
 import { refreshPrices } from './lib/refresh';
-import { fetchYahoo } from './lib/yahoo';
+import { fetchYahoo, searchYahooSymbol } from './lib/yahoo';
 
 async function main() {
   const { sk, vault, prices } = await openData(requireEnv('VAULT_PASSPHRASE'));
@@ -15,6 +15,7 @@ async function main() {
     cgQuotes: (ids) => fetchCoingeckoQuotes(f, ids),
     cgHistory: (id, from, t) => fetchCoingeckoHistory(f, id, from, t),
     fx: (c, from) => fetchFx(f, c, from),
+    search: (isin) => searchYahooSymbol(f, isin),
     pauseMs: 300,
   });
   await saveEncrypted(sk, join(DATA_DIR, 'prices.enc'), next);

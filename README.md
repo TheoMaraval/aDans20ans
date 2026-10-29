@@ -53,6 +53,17 @@ Ce que tu peux suivre :
 
 Le mail part chaque dimanche vers 17h-18h (heure de Paris). Pour le tester tout de suite : Actions → **Mail hebdo** → *Run workflow*.
 
+## Import Trade Republic
+
+Dans l'app Trade Republic : Profil → Paramètres → Activité → **Exporter les transactions** (CSV). Puis dans le dashboard : Investissements → **Importer** (ou Réglages → Données), et dépose le fichier.
+
+- Le PEA et le compte-titres/espèces sont créés, ou rattachés à tes comptes existants. Les actifs sont créés à partir des ISIN.
+- Achats, ventes, frais et taxes, dividendes, intérêts, Saveback et attributions gratuites sont importés. Les paiements carte sont regroupés en une ligne par mois, pour que le solde espèces reste exact.
+- **Réimporter un export plus récent n'ajoute que les opérations manquantes** : identifiant Trade Republic, sans doublon.
+- Les tickers Yahoo sont retrouvés automatiquement depuis l'ISIN par l'Action « Cours ». Les cotations dans une autre devise (USD, CHF…) sont converties en euros.
+- Si tu as déclaré un plan DCA, les achats réels importés proches d'une échéance (−3 à +10 jours) sont rattachés au plan au lieu d'être doublés.
+- Le fichier est lu uniquement dans ton navigateur.
+
 ## Tickers
 
 - **Yahoo Finance** (actions/ETF) : le symbole affiché sur [finance.yahoo.com](https://finance.yahoo.com). Exemples : `CW8.PA` (Amundi MSCI World), `WPEA.PA` (iShares MSCI World PEA), `ESE.PA` (BNP S&P 500), `MC.PA` (LVMH), `AAPL`, `VUSA.L` (cotée en pence, convertie automatiquement).

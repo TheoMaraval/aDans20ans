@@ -11,17 +11,22 @@ export interface PriceFile {
   closes: Record<string, Series>;
   fxCloses: Record<string, Series>;
   errors: { symbol: string; message: string; at: string }[];
+  /** Symbole Yahoo résolu automatiquement à partir de l'ISIN */
+  symbols: Record<string, string>;
 }
 
-export const emptyPriceFile = (): PriceFile => ({ updatedAt: '', quotes: {}, fx: {}, closes: {}, fxCloses: {}, errors: [] });
+export const emptyPriceFile = (): PriceFile => ({ updatedAt: '', quotes: {}, fx: {}, closes: {}, fxCloses: {}, errors: [], symbols: {} });
 
-export const priceKey = (i: Pick<Instrument, 'yahooSymbol' | 'coingeckoId'>): string | null =>
-  i.yahooSymbol ?? (i.coingeckoId ? `cg:${i.coingeckoId}` : null);
+/** Clé de cotation : ticker saisi, sinon identifiant CoinGecko, sinon symbole résolu depuis l'ISIN. */
+export const priceKey = (i: Pick<Instrument, 'yahooSymbol' | 'coingeckoId' | 'isin'>, symbols: Record<string, string> = {}): string | null =>
+  i.yahooSymbol ?? (i.coingeckoId ? `cg:${i.coingeckoId}` : (i.isin && symbols[i.isin]) || null);
 
 export interface PricePoint { price: number; asOf: string; source: PriceSource }
 
 export interface PriceBook {
   today: ISODate;
+  /** Clé de cotation de l'instrument (null si aucune). */
+  key(i: Instrument): string | null;
   /** Cours en devise de l'instrument, dernier connu à la date. */
   priceAt(i: Instrument, date: ISODate): PricePoint | null;
   /** Clôture du jour ou du premier jour de cotation suivant (≤ maxDays). */
@@ -34,17 +39,32 @@ export interface PriceBook {
 export function createPriceBook(pf: PriceFile, transactions: Transaction[], today: ISODate, live: Record<string, Quote> = {}): PriceBook {
   const txPrices = new Map<string, Series>();
   for (const t of transactions) {
-    if ((t.type === 'BUY' || t.type === 'SELL') && t.instrumentId && t.unitPrice !== undefined) {
+    if ((t.type === 'BUY' || t.type === 'SELL') && t.instrumentId && t.unitPrice) {
       const s = txPrices.get(t.instrumentId) ?? {};
       s[t.date] = t.unitPrice;
       txPrices.set(t.instrumentId, s);
     }
   }
-  const quoteFor = (i: Instrument): { q: Quote; source: PriceSource } | null => {
-    const k = priceKey(i);
+  const symbols = pf.symbols ?? {};
+  const key = (i: Instrument) => priceKey(i, symbols);
+
+  const fxAt = (currency: string, date: ISODate): number => {
+    if (currency === 'EUR') return 1;
+    if (date >= today && pf.fx[currency]) return pf.fx[currency];
+    return lastOnOrBefore(pf.fxCloses[currency], date)?.value
+      ?? firstOnOrAfter(pf.fxCloses[currency], date)?.value
+      ?? pf.fx[currency] ?? 1;
+  };
+  /** Une cotation peut être dans une autre devise que l'instrument (ex. MRNA en USD, acheté en EUR) : on convertit. */
+  const conv = (i: Instrument, k: string, price: number, date: ISODate): number => {
+    const qc = live[k]?.currency ?? pf.quotes[k]?.currency;
+    return !qc || qc === i.currency ? price : (price * fxAt(qc, date)) / fxAt(i.currency, date);
+  };
+  const quoteFor = (i: Instrument): { k: string; q: Quote; source: PriceSource } | null => {
+    const k = key(i);
     if (!k) return null;
-    if (live[k]) return { q: live[k], source: 'live' };
-    if (pf.quotes[k]) return { q: pf.quotes[k], source: 'quote' };
+    if (live[k]) return { k, q: live[k], source: 'live' };
+    if (pf.quotes[k]) return { k, q: pf.quotes[k], source: 'quote' };
     return null;
   };
   const fallback = (i: Instrument, date: ISODate): PricePoint | null => {
@@ -55,34 +75,27 @@ export function createPriceBook(pf: PriceFile, transactions: Transaction[], toda
   };
 
   return {
-    today,
+    today, key, fxAt,
     priceAt(i, date) {
       if (date >= today) {
         const q = quoteFor(i);
-        if (q) return { price: q.q.price, asOf: q.q.asOf, source: q.source };
+        if (q) return { price: conv(i, q.k, q.q.price, date), asOf: q.q.asOf, source: q.source };
       }
-      const k = priceKey(i);
+      const k = key(i);
       const c = k ? lastOnOrBefore(pf.closes[k], date) : null;
-      if (c) return { price: c.value, asOf: c.date, source: 'close' };
+      if (k && c) return { price: conv(i, k, c.value, c.date), asOf: c.date, source: 'close' };
       return fallback(i, date);
     },
     closeOnOrAfter(i, date, maxDays = 7) {
-      const k = priceKey(i);
+      const k = key(i);
       if (!k) return fallback(i, date);
       const limit = addDays(date, maxDays);
       const c = firstOnOrAfter(pf.closes[k], date);
-      if (c && c.date <= limit) return { price: c.value, asOf: c.date, source: 'close' };
+      if (c && c.date <= limit) return { price: conv(i, k, c.value, c.date), asOf: c.date, source: 'close' };
       const q = quoteFor(i);
       const qd = q?.q.asOf.slice(0, 10);
-      if (q && qd && qd >= date && qd <= limit) return { price: q.q.price, asOf: q.q.asOf, source: q.source };
+      if (q && qd && qd >= date && qd <= limit) return { price: conv(i, k, q.q.price, qd), asOf: q.q.asOf, source: q.source };
       return null;
-    },
-    fxAt(currency, date) {
-      if (currency === 'EUR') return 1;
-      if (date >= today && pf.fx[currency]) return pf.fx[currency];
-      return lastOnOrBefore(pf.fxCloses[currency], date)?.value
-        ?? firstOnOrAfter(pf.fxCloses[currency], date)?.value
-        ?? pf.fx[currency] ?? 1;
     },
     changePct1d(i) { return quoteFor(i)?.q.changePct1d; },
   };

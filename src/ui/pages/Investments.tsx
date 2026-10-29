@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { accountXirr } from '../../core/performance';
-import { priceKey } from '../../core/prices';
 import { ACCOUNT_TYPE_LABELS, INVESTMENT_ACCOUNT_TYPES, type PositionView } from '../../core/types';
 import { PriceChart } from '../components/charts';
 import { Sheet } from '../components/Sheet';
@@ -10,9 +9,10 @@ import { useEngine, useFmt } from '../hooks';
 import { upsertDated } from '../lib/collections';
 import { dateFr, pct, qty } from '../lib/format';
 import { AccountSheet, DatedValueSheet, InstrumentSheet, PriceAlertSheet, TransactionSheet } from '../sheets/EntitySheets';
+import { ImportSheet } from '../sheets/ImportSheet';
 import { useApp } from '../store/app';
 
-type S = null | { k: 'account'; id?: string } | { k: 'tx'; preset?: Record<string, unknown> } | { k: 'inst'; id?: string } | { k: 'insts' } | { k: 'pos'; p: PositionView } | { k: 'alert'; instrumentId: string } | { k: 'balance'; accountId: string } | { k: 'manual'; instrumentId: string };
+type S = null | { k: 'import' } | { k: 'account'; id?: string } | { k: 'tx'; preset?: Record<string, unknown> } | { k: 'inst'; id?: string } | { k: 'insts' } | { k: 'pos'; p: PositionView } | { k: 'alert'; instrumentId: string } | { k: 'balance'; accountId: string } | { k: 'manual'; instrumentId: string };
 
 export default function Investments() {
   const e = useEngine();
@@ -39,13 +39,14 @@ export default function Investments() {
   return (
     <>
       <PageHeader title="Investissements" actions={<>
+        <Button size="sm" onClick={() => setSheet({ k: 'import' })}>Importer</Button>
         <Button size="sm" onClick={() => setSheet({ k: 'insts' })}>Actifs</Button>
         <Button size="sm" onClick={() => setSheet({ k: 'account' })}><PlusIcon width={16} />Compte</Button>
         <Button size="sm" variant="primary" onClick={() => setSheet({ k: 'tx', preset: account ? { accountId: account.id } : {} })}><PlusIcon width={16} />Transaction</Button>
       </>} />
 
       {!accounts.length ? (
-        <Empty title="Aucun compte d'investissement" action={<Button variant="primary" onClick={() => setSheet({ k: 'account' })}>Créer un compte</Button>}>PEA, CTO, assurance-vie, PER, crypto…</Empty>
+        <Empty title="Aucun compte d'investissement" action={<div className="flex flex-wrap justify-center gap-2"><Button variant="primary" onClick={() => setSheet({ k: 'import' })}>Importer Trade Republic</Button><Button onClick={() => setSheet({ k: 'account' })}>Créer un compte</Button></div>}>PEA, CTO, assurance-vie, PER, crypto… Tu peux aussi importer ton export CSV Trade Republic.</Empty>
       ) : (
         <>
           <div className="mb-4"><Tabs options={[{ value: 'all', label: 'Tous' }, ...accounts.map((a) => ({ value: a.id, label: a.name }))]} value={sel} onChange={setSel} /></div>
@@ -102,6 +103,7 @@ export default function Investments() {
         </>
       )}
 
+      {sheet?.k === 'import' && <ImportSheet onClose={close} />}
       {sheet?.k === 'account' && <AccountSheet account={v.accounts.find((a) => a.id === sheet.id) ?? { type: 'PEA' }} onClose={close} />}
       {sheet?.k === 'tx' && <TransactionSheet tx={sheet.preset} onClose={close} />}
       {sheet?.k === 'inst' && <InstrumentSheet instrument={v.instruments.find((i) => i.id === sheet.id)} onClose={close} />}
@@ -113,7 +115,7 @@ export default function Investments() {
       {sheet?.k === 'insts' && (
         <Sheet open onClose={close} title="Actifs">
           <Button variant="primary" className="mb-3 w-full" onClick={() => setSheet({ k: 'inst' })}><PlusIcon width={16} />Nouvel actif</Button>
-          {v.instruments.map((i) => <Row key={i.id} onClick={() => setSheet({ k: 'inst', id: i.id })} left={i.name} sub={i.yahooSymbol ?? i.coingeckoId ?? 'prix manuel'} right={<span className="text-mute">{i.currency}</span>} />)}
+          {v.instruments.map((i) => <Row key={i.id} onClick={() => setSheet({ k: 'inst', id: i.id })} left={i.name} sub={e.book.key(i) ?? (i.isin ? `${i.isin} · ticker résolu au prochain passage de l'Action « Cours »` : 'prix manuel')} right={<span className="text-mute">{i.currency}</span>} />)}
         </Sheet>
       )}
       {sheet?.k === 'pos' && <PositionSheet p={sheet.p} onClose={close}
@@ -129,7 +131,7 @@ function PositionSheet({ p, onClose, onAction }: { p: PositionView; onClose: () 
   const inst = e.vault.instruments.find((i) => i.id === p.instrumentId)!;
   const txs = e.transactions.filter((t) => t.accountId === p.accountId && t.instrumentId === p.instrumentId).sort((a, b) => b.date.localeCompare(a.date));
   const firstDate = txs.at(-1)?.date ?? e.today;
-  const key = priceKey(inst);
+  const key = e.book.key(inst);
   const series = key ? Object.entries(prices.closes[key] ?? {}).filter(([d]) => d >= firstDate).sort().map(([date, value]) => ({ date, value })) : (inst.manualPrice ?? []).map((m) => ({ date: m.date, value: m.price }));
   const buys = txs.filter((t) => t.type === 'BUY').map((t) => ({ date: series.find((s) => s.date >= t.date)?.date ?? t.date, value: t.unitPrice ?? 0 }));
   const TYPE = { BUY: 'Achat', SELL: 'Vente', DIVIDEND: 'Dividende', DEPOSIT: 'Versement', WITHDRAWAL: 'Retrait', FEE: 'Frais', INTEREST: 'Intérêts' };

@@ -1,5 +1,4 @@
 import { addDays, daysBetween, lastEntryOnOrBefore } from './dates';
-import { priceKey } from './prices';
 import { ceilingFor, balanceAt } from './savings';
 import type { Engine } from './engine';
 import { ASSET_CLASS_LABELS, type AssetClass, type Id } from './types';
@@ -123,7 +122,7 @@ export function computeAlerts(e: Engine): Alert[] {
   // 7. Données
   const stale = cur.positions.filter((p) => {
     const i = instruments.get(p.instrumentId)!;
-    return priceKey(i) && (p.priceSource === 'transaction' || p.priceSource === 'cost' || daysBetween(p.priceAsOf.slice(0, 10), today) > 4);
+    return (e.book.key(i) || i.isin) && (p.priceSource === 'transaction' || p.priceSource === 'cost' || daysBetween(p.priceAsOf.slice(0, 10), today) > 4);
   });
   if (stale.length) out.push({ id: 'data:stale', family: 'DATA', level: 'info', title: `${stale.length} cours non à jour`, detail: stale.map((p) => p.name).join(', ') });
   if (e.pendingDca.length) out.push({ id: 'data:pending-dca', family: 'DATA', level: 'warn', title: `${e.pendingDca.length} échéance(s) DCA sans cours`, detail: e.pendingDca.map((p) => `${vault.dcaPlans.find((x) => x.id === p.planId)?.name} (${p.date})`).join(', ') });

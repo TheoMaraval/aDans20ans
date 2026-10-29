@@ -42,3 +42,34 @@ describe('refresh', () => {
     expect(r.errors.map((e) => e.symbol)).toEqual(['AAPL', 'bitcoin']);
   });
 });
+
+describe('refresh : ISIN sans ticker', () => {
+  const v = makeVault({
+    accounts: [acc({ id: 'cto', type: 'CTO' })],
+    instruments: [inst({ id: 'm', isin: 'US60770K1079', kind: 'STOCK' }), inst({ id: 'z', isin: 'XX0000000000', kind: 'STOCK' })],
+    transactions: [
+      tx({ accountId: 'cto', date: '2024-01-10', type: 'BUY', instrumentId: 'm', quantity: 1, unitPrice: 100 }),
+      tx({ accountId: 'cto', date: '2024-01-10', type: 'BUY', instrumentId: 'z', quantity: 1, unitPrice: 1 }),
+    ],
+  });
+  it('résout le ticker, récupère le cours et le taux de la devise de cotation', async () => {
+    const fx = vi.fn(async () => ({ USD: { '2024-03-01': 0.9 } }));
+    const r = await refreshPrices(v, prices(), '2024-03-02', {
+      search: async (isin) => (isin === 'US60770K1079' ? 'MRNA' : null),
+      yahoo: async () => ({ quote: { price: 200, currency: 'USD', asOf: 't' }, closes: { '2024-03-01': 199 } }),
+      cgQuotes: async () => ({}), cgHistory: async () => ({}), fx, pauseMs: 0,
+    });
+    expect(r.symbols).toEqual({ US60770K1079: 'MRNA' });
+    expect(r.quotes.MRNA.price).toBe(200);
+    expect(fx).toHaveBeenCalledWith(['USD'], expect.any(String));
+    expect(r.errors.map((e) => e.symbol)).toEqual(['XX0000000000']);
+  });
+  it('ne recherche pas un ISIN déjà résolu', async () => {
+    const search = vi.fn(async () => 'X');
+    await refreshPrices(v, { ...prices(), symbols: { US60770K1079: 'MRNA', XX0000000000: 'Z' } }, '2024-03-02', {
+      search, yahoo: async () => ({ quote: { price: 1, currency: 'EUR', asOf: 't' }, closes: {} }),
+      cgQuotes: async () => ({}), cgHistory: async () => ({}), fx: async () => ({}), pauseMs: 0,
+    });
+    expect(search).not.toHaveBeenCalled();
+  });
+});

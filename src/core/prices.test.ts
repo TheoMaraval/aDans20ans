@@ -43,3 +43,25 @@ describe('PriceBook', () => {
     expect(b.closeOnOrAfter(scpi, '2024-02-01')).toMatchObject({ price: 200 });
   });
 });
+
+describe('PriceBook : ISIN et devise de cotation', () => {
+  const mrna = inst({ id: 'mrna', kind: 'STOCK', isin: 'US60770K1079' });
+  const pf2 = prices({
+    symbols: { US60770K1079: 'MRNA' },
+    quotes: { MRNA: { price: 200, currency: 'USD', asOf: '2024-03-10T20:00:00Z' } },
+    closes: { MRNA: { '2024-03-01': 100 } },
+    fx: { USD: 0.9 }, fxCloses: { USD: { '2024-03-01': 0.8 } },
+  });
+  const b = createPriceBook(pf2, [], '2024-03-10');
+  it('symbole résolu depuis l\'ISIN', () => {
+    expect(priceKey(mrna, pf2.symbols)).toBe('MRNA');
+    expect(b.key(mrna)).toBe('MRNA');
+  });
+  it('cotation USD convertie en EUR (devise de l\'instrument)', () => {
+    expect(b.priceAt(mrna, '2024-03-10')?.price).toBeCloseTo(180, 9);
+    expect(b.priceAt(mrna, '2024-03-05')?.price).toBeCloseTo(80, 9);
+  });
+  it('un ticker saisi prime sur la résolution', () => {
+    expect(priceKey({ ...mrna, yahooSymbol: 'MRNA.DE' }, pf2.symbols)).toBe('MRNA.DE');
+  });
+});

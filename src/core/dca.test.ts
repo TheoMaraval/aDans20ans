@@ -73,3 +73,19 @@ describe('projection', () => {
     expect(p.at(-1)!.value).toBeLessThan(17500);
   });
 });
+
+describe('DCA et achats réels (import courtier)', () => {
+  const p16: DcaPlan = { ...plan, dayOfMonth: 16 };
+  const real = tx({ id: 'tr:x', accountId: 'pea', date: '2024-01-17', type: 'BUY', instrumentId: 'cw8', quantity: 3, unitPrice: 33 });
+  const v = makeVault({ accounts: [acc({ id: 'pea' })], instruments: [inst({ id: 'cw8', yahooSymbol: 'CW8.PA' })], dcaPlans: [p16], transactions: [real] });
+  const pf = prices({ closes: { 'CW8.PA': { '2024-01-16': 50, '2024-02-16': 40 } } });
+  const r = expandTransactions(v, createPriceBook(pf, [real], '2024-02-20'), '2024-02-20');
+
+  it('un achat réel proche de l\'échéance en tient lieu (pas d\'achat ni de versement automatique)', () => {
+    const buys = r.transactions.filter((t) => t.type === 'BUY');
+    expect(buys.map((b) => b.id)).toEqual(['tr:x', 'dca:p1:2024-02-16']);
+    expect(buys[0]).toMatchObject({ dcaPlanId: 'p1', dcaDate: '2024-01-16' });
+    expect(r.transactions.some((t) => t.id === 'dcadep:p1:2024-01-16')).toBe(false);
+  });
+  it('le vault d\'origine n\'est pas modifié', () => { expect(v.transactions[0].dcaPlanId).toBeUndefined(); });
+});

@@ -43,7 +43,7 @@ export default function Home() {
     <>
       <PageHeader title="Bienvenue 👋" />
       <Empty title="Ton patrimoine est vide" action={<div className="flex flex-wrap justify-center gap-2">
-        <Link to="/investissements"><Button variant="primary">Ajouter un compte</Button></Link>
+        <Link to="/investissements"><Button variant="primary">Importer Trade Republic / ajouter un compte</Button></Link>
         <Link to="/immobilier"><Button>Ajouter un bien</Button></Link>
         <Link to="/reglages"><Button>Connecter GitHub</Button></Link>
       </div>}>Commence par créer tes comptes (PEA, CTO, livrets…), tes biens et tes prêts. Pense à connecter GitHub dans Réglages pour enregistrer.</Empty>
