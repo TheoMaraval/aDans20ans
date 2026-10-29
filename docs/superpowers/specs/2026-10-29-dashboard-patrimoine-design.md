@@ -60,7 +60,7 @@ finaryPerso/
 │  │  ├─ savings.ts         # intérêts courus estimés, plafonds
 │  │  ├─ valuation.ts       # valorisation complète à une date -> NetWorthBreakdown
 │  │  ├─ performance.ts     # XIRR, variations sur une période
-│  │  ├─ history.ts         # reconstruction historique et snapshots quotidiens
+│  │  ├─ history.ts         # reconstruction déterministe de l'historique (vault + clôtures)
 │  │  ├─ alerts.ts          # moteur d'alertes (section 7)
 │  │  └─ report.ts          # données du mail hebdo (sans rendu)
 │  ├─ ui/
@@ -76,7 +76,7 @@ finaryPerso/
 │  ├─ refresh-prices.ts
 │  ├─ weekly-report.ts      # + templates/email.html.ts
 │  └─ init-vault.ts         # crée un vault vide (ou de démo) chiffré
-├─ data/                    # vault.enc · prices.enc · history.enc (tous chiffrés)
+├─ data/                    # vault.enc · prices.enc (chiffrés)
 ├─ .github/workflows/       # deploy.yml · refresh-prices.yml · weekly-report.yml · ci.yml
 └─ docs/
 ```
@@ -85,7 +85,8 @@ Les tests Vitest sont placés à côté du code (`src/core/*.test.ts`, `scripts/
 
 **Règle d'écriture** : un seul écrivain par fichier.
 - `vault.enc` : écrit uniquement par l'app.
-- `prices.enc` et `history.enc` : écrits uniquement par les Actions.
+- `prices.enc` : écrit uniquement par les Actions.
+- Il n'y a pas de fichier d'historique : l'historique est **recalculé** à partir du vault et des clôtures, à l'identique dans l'app et dans l'Action. Il ne peut donc jamais diverger des données saisies.
 - Les achats DCA générés ne sont **pas** écrits dans le vault par les Actions. Ils sont recalculés de façon déterministe à partir des plans DCA et de l'historique des cours (section 5.3), ce qui évite tout conflit d'écriture.
 
 ## 4. Modèle de données
@@ -159,7 +160,7 @@ interface DcaPlan {
   startDate: string; endDate?: string;
   feesPct?: number;              // ex. 0.0 pour Trade Republic, 0.005 pour d'autres
   fractional: boolean;           // true : quantité fractionnaire ; false : arrondi à l'unité inférieure (le reste n'est pas investi)
-  paused?: boolean;
+  pausedFrom?: string;           // date à partir de laquelle aucune échéance n'est générée
   expectedAnnualReturn?: number; // pour la projection, 0.07 par défaut
 }
 
@@ -228,10 +229,9 @@ interface PriceFile {          // prices.enc
   errors: { symbol: string; message: string; at: string }[];
 }
 
-interface HistoryFile {        // history.enc
-  snapshots: { date: string; net: number; gross: number; debts: number;
-               byClass: Record<AssetClass, number>; byAccount: Record<Id, number>; invested: number }[];
-}
+// Snapshot (calculé, non stocké)
+interface Snapshot { date: string; net: number; gross: number; debts: number;
+  byClass: Partial<Record<AssetClass, number>>; byAccount: Record<Id, number>; invested: number }
 ```
 
 ## 5. Règles de calcul (`src/core`)
@@ -254,7 +254,7 @@ Pour les comptes « solde » (livrets, compte courant), c'est la dernière entr�
 
 ### 5.3 DCA
 
-`generateDcaBuys(plan, closes, today)` liste les échéances entre `startDate` et `min(endDate, today)`, en excluant les périodes `paused`.
+`generateDcaBuys(plan, closes, today)` liste les échéances entre `startDate` et `min(endDate, today)`, en excluant les dates ≥ `pausedFrom`.
 
 Pour chaque échéance :
 - On prend le cours de clôture du jour, ou à défaut du jour de cotation **suivant** (jour férié ou week-end).
@@ -313,10 +313,8 @@ Répartition par classe d'actif :
 
 ### 5.9 Historique
 
-- `rebuildHistory(vault, prices, from, to)` produit un snapshot par jour. Pour chaque jour, on applique les transactions jusqu'à cette date, on prend la dernière clôture connue à cette date et on interpole linéairement les estimations des biens.
-- C'est l'app qui l'appelle quand le vault change (ajout d'une transaction ancienne).
-- L'Action écrit le snapshot du jour dans `history.enc`.
-- La courbe affichée = snapshots stockés + recalcul du jour courant en live.
+- `rebuildHistory(ctx, from, to)` produit des snapshots : un par jour sur les 365 derniers jours, un par semaine avant. Pour chaque date, on applique les transactions jusqu'à cette date, on prend la dernière clôture connue à cette date et on interpole linéairement les estimations immobilières.
+- L'app et l'Action du mail l'appellent toutes les deux : la même fonction donne le même résultat.
 
 ## 6. Interface
 
@@ -358,9 +356,9 @@ Chaque alerte a un niveau (`info`, `warn` ou `critical`), un titre, un détail e
 
 ## 8. Sécurité
 
-- **Format d'enveloppe** (JSON) : `{ v:1, kdf:'PBKDF2-SHA256', iter:600000, salt:b64(16o), iv:b64(12o), ct:b64 }`, chiffré en AES-256-GCM. Chaque écriture utilise un nouvel IV. Le sel est commun aux trois fichiers, ce qui permet de ne dériver la clé qu'une fois par session.
+- **Format d'enveloppe** (JSON) : `{ v:1, kdf:'PBKDF2-SHA256', iter:600000, salt:b64(16o), iv:b64(12o), ct:b64 }`, chiffré en AES-256-GCM. Chaque écriture utilise un nouvel IV. Le sel est commun aux deux fichiers, ce qui permet de ne dériver la clé qu'une fois par session.
 - **Passphrase** : 16 caractères minimum, et un score zxcvbn d'au moins 3 est exigé à la création et au changement.
-- **Changement de passphrase** : les trois fichiers sont rechiffrés. L'app rechiffre `vault.enc`. L'app pouvant déchiffrer les deux autres fichiers, elle les rechiffre aussi avec un nouveau sel, commite les trois en une fois (API Git Data : tree + commit) et affiche la consigne de mettre à jour le secret `VAULT_PASSPHRASE` ; tant que ce n'est pas fait, l'Action échoue proprement.
+- **Changement de passphrase** : les deux fichiers sont rechiffrés avec un nouveau sel et commités en une fois (API Git Data : tree + commit) et affiche la consigne de mettre à jour le secret `VAULT_PASSPHRASE` ; tant que ce n'est pas fait, l'Action échoue proprement.
 - **Clé en mémoire uniquement** (CryptoKey non extractible). Le verrouillage la supprime, ainsi que le vault déchiffré. Verrouillage automatique après `autoLockMinutes` d'inactivité et quand l'onglet reste caché plus de 5 min.
 - **Token GitHub** : chiffré avec la clé de session et stocké dans `localStorage` (`fp.ghToken.enc`). Il n'est jamais commité. Pour le créer : token *fine-grained*, repo unique, `Contents: Read and write` ; un lien de création pré-rempli est proposé.
 - **Lecture** des fichiers `.enc` : directement depuis le site Pages (fichiers publics). Si un token est configuré, l'app lit via l'API pour avoir la version la plus récente (le cache de Pages peut avoir plusieurs minutes de retard).
@@ -374,7 +372,7 @@ Chaque alerte a un niveau (`info`, `warn` ou `critical`), un titre, un détail e
 |---|---|---|
 | `ci.yml` | push / PR | `npm ci`, lint, typecheck, `vitest run`, build |
 | `deploy.yml` | push sur `main` + `workflow_call` + manuel | Build Vite (`base: '/<repo>/'`), déploiement Pages via `actions/deploy-pages` ; `data/` est copié dans le build |
-| `refresh-prices.yml` | cron `*/30 6-21 * * 1-5` (UTC) + `0 */2 * * 0,6` + manuel | Déchiffre le vault, collecte les symboles, récupère les cours Yahoo (endpoint chart v8 : dernier cours + clôtures quotidiennes manquantes), CoinGecko, BCE ; écrit `prices.enc` ; recalcule et ajoute le snapshot du jour dans `history.enc` ; commit `chore(data): prices` seulement s'il y a un changement ; puis déclenche le déploiement |
+| `refresh-prices.yml` | cron `*/30 6-21 * * 1-5` (UTC) + `0 */2 * * 0,6` + manuel | Déchiffre le vault, collecte les symboles, récupère les cours Yahoo (endpoint chart v8 : dernier cours + clôtures quotidiennes manquantes), CoinGecko, BCE ; écrit `prices.enc` ; commit `chore(data): prices` seulement s'il y a un changement ; puis déclenche le déploiement |
 | `weekly-report.yml` | cron `0 16 * * 0` (UTC, soit 17h ou 18h à Paris) + manuel | Déchiffre, construit le rapport, envoie le mail ; n'écrit rien |
 
 - **Commits des Actions** : `concurrency: data-writer` pour sérialiser, `git pull --rebase` avant le push, 3 tentatives.
