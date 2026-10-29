@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --c-bg: 246 247 249; --c-surface: 255 255 255; --c-surface2: 241 243 247; --c-line: 226 229 236;
+  --c-ink: 17 24 39; --c-mute: 100 108 125; --c-accent: 79 70 229; --c-up: 4 120 87; --c-down: 190 18 60; --c-warn: 180 83 9;
+  color-scheme: light;
+}
+.dark {
+  --c-bg: 11 16 32; --c-surface: 19 25 45; --c-surface2: 28 35 59; --c-line: 40 49 78;
+  --c-ink: 236 239 247; --c-mute: 140 150 178; --c-accent: 129 140 248; --c-up: 52 211 153; --c-down: 251 113 133; --c-warn: 251 191 36;
+  color-scheme: dark;
+}
+html, body { background: rgb(var(--c-bg)); color: rgb(var(--c-ink)); }
+body { @apply font-sans antialiased; -webkit-tap-highlight-color: transparent; }
+.num { font-variant-numeric: tabular-nums; }
+input, select, textarea { @apply w-full rounded-xl border border-line bg-surface2 px-3 py-2.5 text-ink outline-none focus:border-accent; }
+input[type='checkbox'] { @apply w-5 h-5 p-0 accent-accent; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
