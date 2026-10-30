@@ -69,3 +69,12 @@ describe('alertes', () => {
     for (let k = 1; k < a.length; k++) expect(rank[a[k - 1].level]).toBeLessThanOrEqual(rank[a[k].level]);
   });
 });
+
+describe('alertes de variation : sens', () => {
+  it('hausse = up, baisse = down', () => {
+    const a = computeAlerts(buildEngine(base(), pf, TODAY));
+    expect(a.find((x) => x.id === 'move:a')?.tone).toBe('up');
+    expect(a.find((x) => x.id === 'move:b')?.tone).toBe('down');
+    expect(a.find((x) => x.id === 'ceiling:la')?.tone).toBeUndefined();
+  });
+});

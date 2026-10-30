@@ -78,10 +78,14 @@ export function Empty({ title, children, action }: { title: string; children?: R
 }
 
 export function AlertItem({ a }: { a: Alert }) {
-  const c = { critical: 'border-down', warn: 'border-warn', info: 'border-line' }[a.level];
+  // Variations : vert à la hausse, rouge à la baisse ; autres alertes : couleur de gravité.
+  const c = a.tone ? (a.tone === 'up' ? 'border-up' : 'border-down') : { critical: 'border-down', warn: 'border-warn', info: 'border-line' }[a.level];
+  const pctMatch = a.tone ? a.title.match(/^(.*?)([+-]\d[\d\s,]*\s?%)(.*)$/) : null;
   return (
     <div className={`rounded-xl border-l-4 ${c} bg-surface2 px-3 py-2`}>
-      <div className="text-sm font-medium">{a.title}</div>
+      <div className="text-sm font-medium">
+        {pctMatch ? <>{pctMatch[1]}<span className={a.tone === 'up' ? 'text-up' : 'text-down'}>{pctMatch[2]}</span>{pctMatch[3]}</> : a.title}
+      </div>
       <div className="text-xs text-mute">{a.detail}</div>
     </div>
   );

@@ -13,6 +13,8 @@ export const ALERT_FAMILY_LABELS: Record<AlertFamily, string> = {
 export interface Alert {
   id: string; family: AlertFamily; level: AlertLevel; title: string; detail: string;
   ref?: { kind: 'instrument' | 'account' | 'plan' | 'loan'; id: Id };
+  /** Sens du mouvement (alertes de variation) : coloration hausse / baisse. */
+  tone?: 'up' | 'down';
 }
 
 export interface Mover { instrumentId: Id; name: string; pct: number; value: number }
@@ -46,9 +48,9 @@ export function computeAlerts(e: Engine): Alert[] {
   for (const m of movers(e, 30)) {
     const w = m7.get(m.instrumentId);
     if (w && Math.abs(w.pct) >= th.weeklyMovePct) {
-      out.push({ id: `move:${m.instrumentId}`, family: 'MOVES', level: 'warn', title: `${m.name} ${pctFmt(w.pct)} sur 7 jours`, detail: `Position : ${eurFmt(m.value)}`, ref: { kind: 'instrument', id: m.instrumentId } });
+      out.push({ id: `move:${m.instrumentId}`, family: 'MOVES', level: 'warn', tone: w.pct >= 0 ? 'up' : 'down', title: `${m.name} ${pctFmt(w.pct)} sur 7 jours`, detail: `Position : ${eurFmt(m.value)}`, ref: { kind: 'instrument', id: m.instrumentId } });
     } else if (Math.abs(m.pct) >= th.monthlyMovePct) {
-      out.push({ id: `move:${m.instrumentId}`, family: 'MOVES', level: 'info', title: `${m.name} ${pctFmt(m.pct)} sur 30 jours`, detail: `Position : ${eurFmt(m.value)}`, ref: { kind: 'instrument', id: m.instrumentId } });
+      out.push({ id: `move:${m.instrumentId}`, family: 'MOVES', level: 'info', tone: m.pct >= 0 ? 'up' : 'down', title: `${m.name} ${pctFmt(m.pct)} sur 30 jours`, detail: `Position : ${eurFmt(m.value)}`, ref: { kind: 'instrument', id: m.instrumentId } });
     }
   }
 
