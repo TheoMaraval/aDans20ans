@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { todayParis } from '../../core/dates';
 import { buildEngine } from '../../core/engine';
+import { applyAccountsFile, isAccountsFile, parseAccountsFile, type AccountsFile } from '../../core/importers/accountsFile';
 import { applyKraken, COINGECKO_IDS, defaultKrakenAccount, isKrakenBalances, parseKrakenBalances, type KrakenBalance } from '../../core/importers/kraken';
 import { applyTradeRepublic, defaultTrMapping, parseTradeRepublic, TR_ACCOUNT_LABELS, type TrMapping, type TrParsed } from '../../core/importers/traderepublic';
 import { INVESTMENT_ACCOUNT_TYPES } from '../../core/types';
@@ -13,7 +14,7 @@ import { searchCoingecko } from '../services/live';
 import { useApp } from '../store/app';
 import { toast } from '../store/ui';
 
-type Loaded = { kind: 'tr'; parsed: TrParsed } | { kind: 'kraken'; balances: KrakenBalance[]; date: string };
+type Loaded = { kind: 'accounts'; file: AccountsFile } | { kind: 'tr'; parsed: TrParsed } | { kind: 'kraken'; balances: KrakenBalance[]; date: string };
 
 /** Import d'un export Trade Republic (transactions) ou Kraken (soldes). Tout se passe dans le navigateur. */
 export function ImportSheet({ onClose }: { onClose: () => void }) {
@@ -26,7 +27,8 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
     setError('');
     try {
       const text = await file.text();
-      if (isKrakenBalances(text)) {
+      if (isAccountsFile(text)) setLoaded({ kind: 'accounts', file: parseAccountsFile(text) });
+      else if (isKrakenBalances(text)) {
         const date = file.name.match(/(\d{4}-\d{2}-\d{2})/)?.[1] ?? todayParis();
         setLoaded({ kind: 'kraken', balances: parseKrakenBalances(text), date });
       } else setLoaded({ kind: 'tr', parsed: parseTradeRepublic(text) });
@@ -37,7 +39,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet open onClose={onClose} title={loaded?.kind === 'kraken' ? 'Importer Kraken' : loaded?.kind === 'tr' ? 'Importer Trade Republic' : 'Importer un export'} wide>
+    <Sheet open onClose={onClose} title={loaded?.kind === 'accounts' ? 'Importer des comptes' : loaded?.kind === 'kraken' ? 'Importer Kraken' : loaded?.kind === 'tr' ? 'Importer Trade Republic' : 'Importer un export'} wide>
       {!loaded && (
         <>
           <label
@@ -47,7 +49,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
             <span className="text-3xl">📄</span>
             <span className="font-medium">Dépose ton export CSV ici</span>
             <span className="text-sm text-mute">Trade Republic (transactions) ou Kraken (soldes) — ou clique pour choisir</span>
-            <input type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => void read(e.target.files?.[0])} />
+            <input type="file" accept=".csv,text/csv,.json,application/json" className="hidden" onChange={(e) => void read(e.target.files?.[0])} />
           </label>
           <ul className="mt-4 list-disc space-y-1 pl-5 text-sm text-mute">
             <li><b>Trade Republic</b> : Profil → Paramètres → Activité → Exporter les transactions. Réimporter n'ajoute que les opérations manquantes.</li>
@@ -57,6 +59,7 @@ export function ImportSheet({ onClose }: { onClose: () => void }) {
         </>
       )}
       {loaded?.kind === 'tr' && <TradeRepublicPreview parsed={loaded.parsed} onDone={onClose} onBack={() => setLoaded(null)} />}
+      {loaded?.kind === 'accounts' && <AccountsPreview file={loaded.file} onDone={onClose} onBack={() => setLoaded(null)} />}
       {loaded?.kind === 'kraken' && <KrakenPreview balances={loaded.balances} date={loaded.date} onDone={onClose} onBack={() => setLoaded(null)} />}
       {error && <div role="alert" className="mt-3 rounded-xl bg-down/10 px-3 py-2 text-sm text-down">{error}</div>}
     </Sheet>
@@ -176,6 +179,26 @@ function KrakenPreview({ balances, date, onDone, onBack }: { balances: KrakenBal
             onImport={() => { useApp.getState().replaceVault(result.vault); toast('ok', 'Soldes Kraken importés — pense à enregistrer 💾'); onDone(); }} />
         </>
       )}
+    </>
+  );
+}
+
+function AccountsPreview({ file, onDone, onBack }: { file: AccountsFile; onDone: () => void; onBack: () => void }) {
+  const vault = useApp((s) => s.vault)!;
+  const today = useToday();
+  const f = useFmt();
+  const r = useMemo(() => applyAccountsFile(vault, file, today), [vault, file, today]);
+  return (
+    <>
+      <div className="mb-2 text-sm text-mute">Soldes au {dateFr(file.date ?? today)} · {r.created.length} compte(s) créé(s), {r.updated.length} mis à jour</div>
+      <div className="max-h-80 overflow-y-auto">
+        {file.accounts.map((a) => (
+          <Row key={a.name + a.institution} left={<>{a.name} {r.created.includes(a.name) ? <Badge tone="up">nouveau</Badge> : <Badge>mise à jour</Badge>}</>}
+            sub={a.institution} right={f.eur(a.balance, true)} />
+        ))}
+      </div>
+      <Actions disabled={false} onBack={onBack}
+        onImport={() => { useApp.getState().replaceVault(r.vault); toast('ok', 'Comptes importés — pense à enregistrer 💾'); onDone(); }} />
     </>
   );
 }
