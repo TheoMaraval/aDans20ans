@@ -10,9 +10,11 @@ import { upsertDated } from '../lib/collections';
 import { dateFr, pct, qty } from '../lib/format';
 import { AccountSheet, DatedValueSheet, InstrumentSheet, PriceAlertSheet, TransactionSheet } from '../sheets/EntitySheets';
 import { ImportSheet } from '../sheets/ImportSheet';
+import { CostBasisSheet } from '../sheets/CostBasisSheet';
+import { adjustableBuys } from '../../core/costBasis';
 import { useApp } from '../store/app';
 
-type S = null | { k: 'import' } | { k: 'account'; id?: string } | { k: 'tx'; preset?: Record<string, unknown> } | { k: 'inst'; id?: string } | { k: 'insts' } | { k: 'pos'; p: PositionView } | { k: 'alert'; instrumentId: string } | { k: 'balance'; accountId: string } | { k: 'manual'; instrumentId: string };
+type S = null | { k: 'import' } | { k: 'account'; id?: string } | { k: 'tx'; preset?: Record<string, unknown> } | { k: 'inst'; id?: string } | { k: 'insts' } | { k: 'pos'; p: PositionView } | { k: 'alert'; instrumentId: string } | { k: 'balance'; accountId: string } | { k: 'manual'; instrumentId: string } | { k: 'pru'; p: PositionView };
 
 export default function Investments() {
   const e = useEngine();
@@ -125,12 +127,13 @@ export default function Investments() {
         </Sheet>
       )}
       {sheet?.k === 'pos' && <PositionSheet p={sheet.p} onClose={close}
-        onAction={(a) => setSheet(a === 'tx' ? { k: 'tx', preset: { accountId: sheet.p.accountId, instrumentId: sheet.p.instrumentId } } : a === 'alert' ? { k: 'alert', instrumentId: sheet.p.instrumentId } : a === 'manual' ? { k: 'manual', instrumentId: sheet.p.instrumentId } : { k: 'inst', id: sheet.p.instrumentId })} />}
+        onAction={(a) => setSheet(a === 'tx' ? { k: 'tx', preset: { accountId: sheet.p.accountId, instrumentId: sheet.p.instrumentId } } : a === 'alert' ? { k: 'alert', instrumentId: sheet.p.instrumentId } : a === 'manual' ? { k: 'manual', instrumentId: sheet.p.instrumentId } : a === 'pru' ? { k: 'pru', p: sheet.p } : { k: 'inst', id: sheet.p.instrumentId })} />}
+      {sheet?.k === 'pru' && <CostBasisSheet p={sheet.p} onClose={close} />}
     </>
   );
 }
 
-function PositionSheet({ p, onClose, onAction }: { p: PositionView; onClose: () => void; onAction: (a: 'tx' | 'alert' | 'inst' | 'manual') => void }) {
+function PositionSheet({ p, onClose, onAction }: { p: PositionView; onClose: () => void; onAction: (a: 'tx' | 'alert' | 'inst' | 'manual' | 'pru') => void }) {
   const e = useEngine();
   const f = useFmt();
   const prices = useApp((s) => s.prices);
@@ -154,6 +157,7 @@ function PositionSheet({ p, onClose, onAction }: { p: PositionView; onClose: () 
         <Button size="sm" variant="primary" onClick={() => onAction('tx')}><PlusIcon width={16} />Transaction</Button>
         <Button size="sm" onClick={() => onAction('alert')}>Alerte de prix</Button>
         {!key && <Button size="sm" onClick={() => onAction('manual')}>Prix manuel</Button>}
+        {adjustableBuys(e.vault, p.accountId, p.instrumentId).length > 0 && <Button size="sm" onClick={() => onAction('pru')}>Corriger le PRU</Button>}
         <Button size="sm" onClick={() => onAction('inst')}>Modifier l'actif</Button>
       </div>
       <SectionTitle>Historique</SectionTitle>

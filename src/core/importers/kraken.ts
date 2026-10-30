@@ -109,7 +109,7 @@ export function applyKraken(vault: Vault, balances: KrakenBalance[], o: KrakenOp
     if (!priceEur) { if (Math.abs(delta) > 1e-12) { line.status = 'skipped'; line.reason = 'cours EUR indisponible'; } return; }
     if (Math.abs(delta) * priceEur < EPS_EUR) return;
     line.status = 'ok';
-    const amount = Math.round(Math.abs(delta) * priceEur * 100) / 100;
+    const amount = Math.abs(delta) * priceEur;
     const base = `kraken:${o.date}:${symbol}`;
     txs.push({ id: `${base}:trade`, accountId: accId, date: o.date, type: delta > 0 ? 'BUY' : 'SELL', instrumentId: inst.id, quantity: Math.abs(delta), unitPrice: priceEur, fxRate: 1, note: 'Ajustement solde Kraken' });
     txs.push({ id: `${base}:cash`, accountId: accId, date: o.date, type: delta > 0 ? 'DEPOSIT' : 'WITHDRAWAL', amount, note: delta > 0 ? 'Apport (ajustement Kraken)' : 'Retrait (ajustement Kraken)' });
