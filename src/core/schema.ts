@@ -5,7 +5,7 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date attendue AAAA-MM-JJ')
 const num = z.number().finite();
 const pct = z.number().min(0).max(1);
 
-export const accountTypeSchema = z.enum(['PEA', 'PEA_PME', 'CTO', 'ASSURANCE_VIE', 'PER', 'LIVRET_A', 'LDDS', 'LEP',
+export const accountTypeSchema = z.enum(['PEA', 'PEA_PME', 'CTO', 'ASSURANCE_VIE', 'PER', 'LIVRET_A', 'LDDS', 'LEP', 'LIVRET_JEUNE',
   'CEL', 'PEL', 'LIVRET_BANCAIRE', 'COMPTE_COURANT', 'CRYPTO', 'NON_COTE', 'AUTRE']);
 export const assetClassSchema = z.enum(['ACTIONS', 'OBLIGATIONS', 'CRYPTO', 'IMMOBILIER', 'CASH', 'BIENS', 'NON_COTE', 'AUTRE']);
 export const instrumentKindSchema = z.enum(['STOCK', 'ETF', 'FUND', 'BOND', 'CRYPTO', 'OTHER']);

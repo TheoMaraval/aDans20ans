@@ -11,6 +11,7 @@ export const accountFields: FieldDef[] = [
   { key: 'institution', label: 'Établissement', type: 'text' },
   { key: 'currency', label: 'Devise', type: 'select', required: true, options: CURRENCIES },
   { key: 'openedAt', label: 'Date d\'ouverture', type: 'date' },
+  { key: 'balance', label: 'Solde actuel (€)', type: 'number', show: (v) => BALANCE_ACCOUNT_TYPES.has(v.type as never), hint: 'Enregistré à la date du jour ; mets-le à jour ensuite depuis la page Épargne.' },
   { key: 'interestRate', label: 'Taux annuel', type: 'percent', show: isBalance },
   { key: 'ceiling', label: 'Plafond (vide = réglementaire)', type: 'number' },
   { key: 'archived', label: 'Archivé (masqué)', type: 'checkbox' },

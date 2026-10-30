@@ -19,3 +19,7 @@ describe('épargne', () => {
     expect(ceilingFor(acc({ id: 'c', type: 'CTO' }))).toBeUndefined();
   });
 });
+
+describe('Livret Jeune', () => {
+  it('plafond réglementaire 1 600 €', () => { expect(ceilingFor(acc({ id: 'lj', type: 'LIVRET_JEUNE' }))).toBe(1600); });
+});

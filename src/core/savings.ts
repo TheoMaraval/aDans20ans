@@ -2,7 +2,7 @@ import { daysBetween, lastEntryOnOrBefore, type ISODate } from './dates';
 import type { Account, AccountType } from './types';
 
 export const DEFAULT_CEILINGS: Partial<Record<AccountType, number>> = {
-  LIVRET_A: 22950, LDDS: 12000, LEP: 10000, CEL: 15300, PEL: 61200, PEA: 150000, PEA_PME: 225000,
+  LIVRET_A: 22950, LDDS: 12000, LEP: 10000, LIVRET_JEUNE: 1600, CEL: 15300, PEL: 61200, PEA: 150000, PEA_PME: 225000,
 };
 
 export const balanceAt = (a: Account, date: ISODate): number => lastEntryOnOrBefore(a.balanceHistory, date)?.balance ?? 0;

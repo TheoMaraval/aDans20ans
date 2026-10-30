@@ -4,7 +4,7 @@ import type { Account, DcaPlan, Instrument, Loan, PhysicalAsset, PriceAlert, Rea
 import { EntityForm } from '../components/Form';
 import { Sheet } from '../components/Sheet';
 import { Button } from '../components/ui';
-import { removeById, upsert } from '../lib/collections';
+import { removeById, upsert, upsertDated } from '../lib/collections';
 import { searchCoingecko } from '../services/live';
 import { useApp } from '../store/app';
 import { toast } from '../store/ui';
@@ -19,11 +19,20 @@ export function AccountSheet({ account, onClose }: { account?: Partial<Account>;
   const mutate = useMut();
   const v = useVault();
   const id = account?.id;
+  const today = useToday();
   const used = !!id && (v.transactions.some((t) => t.accountId === id) || v.dcaPlans.some((p) => p.accountId === id));
+  const lastBalance = account?.balanceHistory?.at(-1)?.balance;
   return (
     <Sheet open onClose={onClose} title={id ? 'Modifier le compte' : 'Nouveau compte'}>
-      <EntityForm fields={accountFields} initial={{ currency: 'EUR', type: 'PEA', ...account }}
-        onSubmit={(x) => { mutate((d) => { d.accounts = upsert(d.accounts, { ...(account as Account), ...x, id: id ?? newId() } as Account); }); onClose(); }}
+      <EntityForm fields={accountFields} initial={{ currency: 'EUR', type: 'PEA', ...account, balance: lastBalance }}
+        onSubmit={(x) => {
+          const { balance, ...rest } = x as Record<string, unknown>;
+          const next = { ...(account as Account), ...rest, id: id ?? newId() } as Account;
+          // Solde saisi à la création (ou modifié) : enregistré à la date du jour.
+          if (typeof balance === 'number' && balance !== lastBalance) next.balanceHistory = upsertDated(next.balanceHistory, { date: today, balance });
+          mutate((d) => { d.accounts = upsert(d.accounts, next); });
+          onClose();
+        }}
         onDelete={id ? () => { if (used) { toast('err', 'Compte utilisé par des transactions ou un DCA : archive-le plutôt.'); return; } mutate((d) => { d.accounts = removeById(d.accounts, id); }); onClose(); } : undefined} />
     </Sheet>
   );
