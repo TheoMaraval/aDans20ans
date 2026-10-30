@@ -41,6 +41,8 @@ function devData(): Plugin {
 
 export default defineConfig({
   base: process.env.VITE_BASE ?? '/',
+  // Les pages sont embarquées dans le bundle principal (voir App.tsx) : ~230 Ko gzip, mis en cache par la PWA.
+  build: { chunkSizeWarningLimit: 1000 },
   plugins: [
     react(), csp(), devData(),
     VitePWA({

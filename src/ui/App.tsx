@@ -1,21 +1,23 @@
-import { lazy, Suspense, useEffect } from 'react';
+import { useEffect } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
 import { Toasts } from './components/Toasts';
 import { useAutoLock, useAutoPrices, useBeforeUnload, useLivePrices } from './hooks';
 import { useApp } from './store/app';
+// Pages importées statiquement : un chargement différé après le déverrouillage pouvait viser
+// un fichier supprimé par un nouveau déploiement (page vide). Elles sont petites, autant les embarquer.
 import Unlock from './pages/Unlock';
-
-const Home = lazy(() => import('./pages/Home'));
-const Investments = lazy(() => import('./pages/Investments'));
-const Savings = lazy(() => import('./pages/Savings'));
-const RealEstatePage = lazy(() => import('./pages/RealEstate'));
-const Assets = lazy(() => import('./pages/Assets'));
-const Debts = lazy(() => import('./pages/Debts'));
-const Dca = lazy(() => import('./pages/Dca'));
-const Transactions = lazy(() => import('./pages/Transactions'));
-const Settings = lazy(() => import('./pages/Settings'));
-const More = lazy(() => import('./pages/More'));
+import Home from './pages/Home';
+import Investments from './pages/Investments';
+import Savings from './pages/Savings';
+import RealEstatePage from './pages/RealEstate';
+import Assets from './pages/Assets';
+import Debts from './pages/Debts';
+import Dca from './pages/Dca';
+import Transactions from './pages/Transactions';
+import Settings from './pages/Settings';
+import More from './pages/More';
 
 function Ready() {
   useAutoLock();
@@ -25,7 +27,6 @@ function Ready() {
   return (
     <HashRouter>
       <Layout>
-        <Suspense fallback={<div className="animate-pulse text-mute">Chargement…</div>}>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/investissements" element={<Investments />} />
@@ -39,7 +40,6 @@ function Ready() {
             <Route path="/plus" element={<More />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
-        </Suspense>
       </Layout>
     </HashRouter>
   );
@@ -52,8 +52,10 @@ export default function App() {
   return (
     <>
       <Toasts />
-      {status === 'boot' ? <div className="flex min-h-dvh items-center justify-center text-mute">Chargement…</div>
-        : status === 'ready' ? <Ready /> : <Unlock />}
+      <ErrorBoundary>
+        {status === 'boot' ? <div className="flex min-h-dvh items-center justify-center text-mute">Chargement…</div>
+          : status === 'ready' ? <Ready /> : <Unlock />}
+      </ErrorBoundary>
     </>
   );
 }

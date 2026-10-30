@@ -29,7 +29,8 @@ jobs:
         run: |
           git config user.name "patrimoine-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          if git diff --quiet -- data/prices.enc; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # git status (et non git diff) : le premier prices.enc est un fichier non suivi, invisible pour git diff.
+          if [ -z "$(git status --porcelain -- data/prices.enc)" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
           git add data/prices.enc
           git commit -m "chore(data): cours"
           for i in 1 2 3; do
