@@ -76,3 +76,21 @@ export function accountXirr(ctx: ValuationContext, accountIds: Id[], currentValu
   flows.push({ date, amount: currentValue });
   return xirr(flows);
 }
+
+export interface AccountPerformance { rate: number; annualized: boolean; days: number }
+
+/**
+ * TRI des comptes, annualisé seulement si l'historique dépasse un an.
+ * En dessous, on rend la performance réelle de la période : annualiser 2 jours n'a pas de sens.
+ */
+export function accountPerformance(ctx: ValuationContext, accountIds: Id[], currentValue: number, date: ISODate): AccountPerformance | null {
+  const r = accountXirr(ctx, accountIds, currentValue, date);
+  if (r === null) return null;
+  const ids = new Set(accountIds);
+  const first = ctx.transactions
+    .filter((t) => ids.has(t.accountId) && t.date <= date && (t.type === 'DEPOSIT' || t.type === 'WITHDRAWAL'))
+    .reduce<ISODate | null>((m, t) => (!m || t.date < m ? t.date : m), null);
+  const days = first ? daysBetween(first, date) : 0;
+  if (days >= 365) return { rate: r, annualized: true, days };
+  return { rate: Math.pow(1 + r, days / 365) - 1, annualized: false, days };
+}

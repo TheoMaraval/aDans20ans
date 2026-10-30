@@ -2,14 +2,17 @@ const nf0 = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR',
 const nf2 = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 2, maximumFractionDigits: 2 });
 export const MASK = '•••• €';
 
+const tiny = (x: number) => x !== 0 && Math.abs(x) < 0.01;
+const sig = (currency: string) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumSignificantDigits: 3 });
+
 export const eur = (x: number, hide = false, cents = false): string =>
-  hide ? MASK : (cents || Math.abs(x) < 1000 ? nf2 : nf0).format(x);
+  hide ? MASK : tiny(x) ? sig('EUR').format(x) : (cents || Math.abs(x) < 1000 ? nf2 : nf0).format(x);
 
 export const signedEur = (x: number, hide = false): string =>
   hide ? MASK : `${x > 0 ? '+' : x < 0 ? '−' : ''}${eur(Math.abs(x))}`;
 
 export const money = (x: number, currency: string, hide = false): string =>
-  hide ? '••••' : new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: Math.abs(x) < 10 ? 4 : 2 }).format(x);
+  hide ? '••••' : tiny(x) ? sig(currency).format(x) : new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: Math.abs(x) < 10 ? 4 : 2 }).format(x);
 
 export const pct = (x: number | null | undefined, signed = true): string =>
   x == null || !isFinite(x) ? '—'

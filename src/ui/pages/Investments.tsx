@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { accountXirr } from '../../core/performance';
+import { accountPerformance } from '../../core/performance';
 import { ACCOUNT_TYPE_LABELS, INVESTMENT_ACCOUNT_TYPES, type PositionView } from '../../core/types';
 import { PriceChart } from '../components/charts';
 import { Sheet } from '../components/Sheet';
@@ -30,9 +30,14 @@ export default function Investments() {
   const cash = ids.reduce((s, id) => s + (e.current.cashByAccount[id] ?? 0), 0);
   const unreal = positions.reduce((s, p) => s + p.unrealized, 0);
   const cost = positions.reduce((s, p) => s + p.costBasis, 0);
-  const realized = positions.reduce((s, p) => s + p.realized + p.dividends, 0);
+  // Positions soldées comprises (ex. une action entièrement revendue).
+  const realized = ids.reduce((s, id) => s + (e.current.realizedByAccount[id] ?? 0), 0);
+  // Gain total = valeur − apports nets, comme le « depuis le début » des courtiers.
+  const netDeposits = e.transactions.filter((t) => ids.includes(t.accountId) && t.date <= e.today)
+    .reduce((s, t) => s + (t.type === 'DEPOSIT' ? t.amount ?? 0 : t.type === 'WITHDRAWAL' ? -(t.amount ?? 0) : 0), 0);
+  const gain = value - netDeposits;
   const day = positions.reduce((s, p) => s + (p.changePct1d != null ? p.value - p.value / (1 + p.changePct1d) : 0), 0);
-  const irr = useMemo(() => accountXirr(e.ctx, ids, value, e.today), [e, ids.join(), value]);
+  const perf = useMemo(() => accountPerformance(e.ctx, ids, value, e.today), [e, ids.join(), value]);
   const fondsEuro = account && (account.type === 'ASSURANCE_VIE' || account.type === 'PER');
   const instName = (id: string) => v.instruments.find((i) => i.id === id)?.name ?? '?';
 
@@ -59,11 +64,12 @@ export default function Investments() {
               </div>
               {account && <Button size="sm" variant="ghost" onClick={() => setSheet({ k: 'account', id: account.id })} aria-label="Modifier le compte"><EditIcon /></Button>}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4">
+            <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
+              <Stat label="Gain total" value={<Delta value={gain}>{f.signed(gain)}</Delta>} sub={netDeposits > 0 ? <span className="text-mute"><Delta value={gain / netDeposits} /> des versements ({f.eur(netDeposits)})</span> : undefined} />
               <Stat label="Plus-value latente" value={<Delta value={unreal}>{f.signed(unreal)}</Delta>} sub={<Delta value={cost ? unreal / cost : 0} />} />
               <Stat label="Réalisé + dividendes" value={f.signed(realized)} />
               <Stat label="Liquidités" value={f.eur(cash)} sub={cash < -0.01 ? <span className="text-down">Versement manquant ?</span> : undefined} />
-              <Stat label="Perf. annualisée (TRI)" value={<Delta value={irr} />} />
+              <Stat label={perf && !perf.annualized ? `Performance (${perf.days} j)` : 'Perf. annualisée (TRI)'} value={<Delta value={perf?.rate} />} />
             </div>
             {fondsEuro && (
               <div className="mt-4 flex items-center justify-between rounded-xl bg-surface2 px-3 py-2 text-sm">

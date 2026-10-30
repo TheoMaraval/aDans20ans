@@ -43,3 +43,19 @@ describe('valueAt', () => {
     expect(b2.positions[0]).toMatchObject({ priceSource: 'cost', price: 50, value: 500, unrealized: 0 });
   });
 });
+
+describe('réalisé des positions soldées', () => {
+  it('compte le gain d\'une position entièrement vendue', () => {
+    const v = makeVault({
+      accounts: [acc({ id: 'cto', type: 'CTO' })], instruments: [inst({ id: 'm' })],
+      transactions: [
+        tx({ accountId: 'cto', date: '2024-01-02', type: 'BUY', instrumentId: 'm', quantity: 4, unitPrice: 50 }),
+        tx({ accountId: 'cto', date: '2024-02-02', type: 'SELL', instrumentId: 'm', quantity: 4, unitPrice: 140 }),
+        tx({ accountId: 'cto', date: '2024-02-03', type: 'DIVIDEND', instrumentId: 'm', amount: 3 }),
+      ],
+    });
+    const b = valueAt({ vault: v, book: createPriceBook(prices(), v.transactions, '2024-03-01'), transactions: v.transactions }, '2024-03-01');
+    expect(b.positions).toHaveLength(0);
+    expect(b.realizedByAccount.cto).toBeCloseTo(360 + 3, 9);
+  });
+});

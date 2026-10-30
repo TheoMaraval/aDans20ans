@@ -73,6 +73,8 @@ export function valueAt(ctx: ValuationContext, date: ISODate): NetWorthBreakdown
   for (const p of positions) p.weight = gross ? p.value / gross : 0;
   positions.sort((a, b) => b.value - a.value);
   const invested = Object.entries(ledger.netDeposits).reduce((s, [, v]) => s + v, 0);
+  const realizedByAccount: Record<string, number> = {};
+  for (const p of ledger.positions) add(realizedByAccount, p.accountId, p.realized + p.dividends);
 
-  return { date, gross, debts, net: gross - debts, byClass, byGroup, byAccount, cashByAccount, debtsByLoan, positions, invested };
+  return { date, gross, debts, net: gross - debts, byClass, byGroup, byAccount, cashByAccount, debtsByLoan, positions, invested, realizedByAccount };
 }

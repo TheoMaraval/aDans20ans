@@ -65,3 +65,12 @@ describe('PriceBook : ISIN et devise de cotation', () => {
     expect(priceKey({ ...mrna, yahooSymbol: 'MRNA.DE' }, pf2.symbols)).toBe('MRNA.DE');
   });
 });
+
+describe('variation du jour', () => {
+  const us = inst({ id: 'us', yahooSymbol: 'IONQ', currency: 'EUR' });
+  it('ignorée si la dernière cotation date d\'une séance précédente', () => {
+    const pf3 = prices({ quotes: { IONQ: { price: 30, currency: 'EUR', asOf: '2026-10-29T20:00:00Z', changePct1d: -0.08 } } });
+    expect(createPriceBook(pf3, [], '2026-10-30').changePct1d(us)).toBeUndefined();
+    expect(createPriceBook(pf3, [], '2026-10-29').changePct1d(us)).toBe(-0.08);
+  });
+});

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { xirr, externalFlows, periodChange, accountXirr } from './performance';
+import { xirr, externalFlows, periodChange, accountXirr, accountPerformance } from './performance';
 import { createPriceBook } from './prices';
 import { acc, makeVault, prices, tx } from './test-fixtures';
 
@@ -33,5 +33,20 @@ describe('flux externes', () => {
     const v = makeVault({ accounts: [acc({ id: 'pea' })], transactions: [tx({ accountId: 'pea', date: '2023-01-01', type: 'DEPOSIT', amount: 1000 })] });
     const c = { vault: v, book: createPriceBook(prices(), [], '2024-01-01'), transactions: v.transactions };
     expect(accountXirr(c, ['pea'], 1100, '2024-01-01')!).toBeCloseTo(0.1, 4);
+  });
+});
+
+describe('performance de compte', () => {
+  const v = makeVault({ accounts: [acc({ id: 'k', type: 'CRYPTO' })], transactions: [tx({ accountId: 'k', date: '2024-03-01', type: 'DEPOSIT', amount: 1000 })] });
+  const ctx = { vault: v, book: createPriceBook(prices(), [], '2024-03-03'), transactions: v.transactions };
+  it('moins d\'un an : performance de la période, non annualisée', () => {
+    const r = accountPerformance(ctx, ['k'], 992, '2024-03-03')!;
+    expect(r.annualized).toBe(false);
+    expect(r.rate).toBeCloseTo(-0.008, 6);
+  });
+  it('plus d\'un an : TRI annualisé', () => {
+    const r = accountPerformance({ ...ctx, book: createPriceBook(prices(), [], '2025-03-01') }, ['k'], 1100, '2025-03-01')!;
+    expect(r.annualized).toBe(true);
+    expect(r.rate).toBeCloseTo(0.1, 2);
   });
 });

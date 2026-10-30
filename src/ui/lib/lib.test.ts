@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { eur, pct, signedEur, qty, dateFr } from './format';
+import { eur, money, pct, signedEur, qty, dateFr } from './format';
 import { upsert, removeById, upsertDated } from './collections';
 
 const s = (x: string) => x.replace(/[  ]/g, ' ');
@@ -25,5 +25,13 @@ describe('collections', () => {
     expect(removeById([{ id: 'a' }, { id: 'b' }], 'a')).toEqual([{ id: 'b' }]);
     expect(upsertDated([{ date: '2024-02-01', x: 1 }, { date: '2024-01-01', x: 0 }], { date: '2024-02-01', x: 9 }))
       .toEqual([{ date: '2024-01-01', x: 0 }, { date: '2024-02-01', x: 9 }]);
+  });
+});
+
+describe('très petits prix', () => {
+  it('chiffres significatifs au lieu de 0,00', () => {
+    expect(s(money(0.0000046123, 'EUR'))).toBe('0,00000461 €');
+    expect(s(eur(0.0000046123, false, true))).toBe('0,00000461 €');
+    expect(s(money(1.1234, 'EUR'))).toBe('1,1234 €');
   });
 });

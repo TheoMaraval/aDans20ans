@@ -1,4 +1,4 @@
-import { addDays, firstOnOrAfter, lastEntryOnOrBefore, lastOnOrBefore, type ISODate, type Series } from './dates';
+import { addDays, firstOnOrAfter, lastEntryOnOrBefore, lastOnOrBefore, todayParis, type ISODate, type Series } from './dates';
 import type { Instrument, PriceSource, Transaction } from './types';
 
 export interface Quote { price: number; currency: string; asOf: string; changePct1d?: number }
@@ -97,6 +97,12 @@ export function createPriceBook(pf: PriceFile, transactions: Transaction[], toda
       if (q && qd && qd >= date && qd <= limit) return { price: conv(i, k, q.q.price, qd), asOf: q.q.asOf, source: q.source };
       return null;
     },
-    changePct1d(i) { return quoteFor(i)?.q.changePct1d; },
+    changePct1d(i) {
+      const q = quoteFor(i)?.q;
+      if (!q) return undefined;
+      // Une cotation d'une séance précédente (ex. actions US avant l'ouverture) ne bouge pas « aujourd'hui ».
+      const d = new Date(q.asOf);
+      return !isNaN(d.getTime()) && todayParis(d) < today ? undefined : q.changePct1d;
+    },
   };
 }

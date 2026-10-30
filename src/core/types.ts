@@ -72,6 +72,8 @@ export interface NetWorthBreakdown {
   positions: PositionView[];
   /** apports nets cumulés sur les comptes d'investissement */
   invested: number;
+  /** plus-values réalisées + dividendes par compte, positions soldées comprises */
+  realizedByAccount: Record<Id, number>;
 }
 
 export interface Snapshot {
