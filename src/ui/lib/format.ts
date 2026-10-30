@@ -14,9 +14,11 @@ export const signedEur = (x: number, hide = false): string =>
 export const money = (x: number, currency: string, hide = false): string =>
   hide ? '••••' : tiny(x) ? sig(currency).format(x) : new Intl.NumberFormat('fr-FR', { style: 'currency', currency, maximumFractionDigits: Math.abs(x) < 10 ? 4 : 2 }).format(x);
 
-export const pct = (x: number | null | undefined, signed = true): string =>
-  x == null || !isFinite(x) ? '—'
-    : `${signed && x > 0 ? '+' : ''}${(x * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+export const pct = (x: number | null | undefined, signed = true): string => {
+  if (x == null || !isFinite(x)) return '—';
+  const v = Math.abs(x) < 0.0005 ? 0 : x; // évite « -0,0 % »
+  return `${signed && v > 0 ? '+' : ''}${(v * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
+};
 
 export const qty = (x: number): string => x.toLocaleString('fr-FR', { maximumFractionDigits: 6 });
 

@@ -10,11 +10,12 @@ import { upsertDated } from '../lib/collections';
 import { dateFr, pct, qty } from '../lib/format';
 import { AccountSheet, DatedValueSheet, InstrumentSheet, PriceAlertSheet, TransactionSheet } from '../sheets/EntitySheets';
 import { ImportSheet } from '../sheets/ImportSheet';
+import { PrivateEquitySheet } from '../sheets/PrivateEquitySheet';
 import { CostBasisSheet } from '../sheets/CostBasisSheet';
 import { adjustableBuys } from '../../core/costBasis';
 import { useApp } from '../store/app';
 
-type S = null | { k: 'import' } | { k: 'account'; id?: string } | { k: 'tx'; preset?: Record<string, unknown> } | { k: 'inst'; id?: string } | { k: 'insts' } | { k: 'pos'; p: PositionView } | { k: 'alert'; instrumentId: string } | { k: 'balance'; accountId: string } | { k: 'manual'; instrumentId: string } | { k: 'pru'; p: PositionView };
+type S = null | { k: 'import' } | { k: 'pe' } | { k: 'account'; id?: string } | { k: 'tx'; preset?: Record<string, unknown> } | { k: 'inst'; id?: string } | { k: 'insts' } | { k: 'pos'; p: PositionView } | { k: 'alert'; instrumentId: string } | { k: 'balance'; accountId: string } | { k: 'manual'; instrumentId: string } | { k: 'pru'; p: PositionView };
 
 export default function Investments() {
   const e = useEngine();
@@ -48,6 +49,7 @@ export default function Investments() {
       <PageHeader title="Investissements" actions={<>
         <Button size="sm" onClick={() => setSheet({ k: 'import' })}>Importer</Button>
         <Button size="sm" onClick={() => setSheet({ k: 'insts' })}>Actifs</Button>
+        <Button size="sm" onClick={() => setSheet({ k: 'pe' })}><PlusIcon width={16} />Non coté</Button>
         <Button size="sm" onClick={() => setSheet({ k: 'account' })}><PlusIcon width={16} />Compte</Button>
         <Button size="sm" variant="primary" onClick={() => setSheet({ k: 'tx', preset: account ? { accountId: account.id } : {} })}><PlusIcon width={16} />Transaction</Button>
       </>} />
@@ -112,6 +114,7 @@ export default function Investments() {
       )}
 
       {sheet?.k === 'import' && <ImportSheet onClose={close} />}
+      {sheet?.k === 'pe' && <PrivateEquitySheet onClose={close} />}
       {sheet?.k === 'account' && <AccountSheet account={v.accounts.find((a) => a.id === sheet.id) ?? { type: 'PEA' }} onClose={close} />}
       {sheet?.k === 'tx' && <TransactionSheet tx={sheet.preset} onClose={close} />}
       {sheet?.k === 'inst' && <InstrumentSheet instrument={v.instruments.find((i) => i.id === sheet.id)} onClose={close} />}

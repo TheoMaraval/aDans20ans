@@ -35,3 +35,7 @@ describe('très petits prix', () => {
     expect(s(money(1.1234, 'EUR'))).toBe('1,1234 €');
   });
 });
+
+describe('pct proche de zéro', () => {
+  it('pas de « -0,0 % »', () => { expect(s(pct(-0.00001))).toBe('0,0 %'); });
+});

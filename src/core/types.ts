@@ -25,7 +25,7 @@ export type Settings = z.infer<typeof settingsSchema>;
 export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   PEA: 'PEA', PEA_PME: 'PEA-PME', CTO: 'Compte-titres', ASSURANCE_VIE: 'Assurance-vie', PER: 'PER',
   LIVRET_A: 'Livret A', LDDS: 'LDDS', LEP: 'LEP', CEL: 'CEL', PEL: 'PEL', LIVRET_BANCAIRE: 'Livret bancaire',
-  COMPTE_COURANT: 'Compte courant', CRYPTO: 'Crypto', AUTRE: 'Autre',
+  COMPTE_COURANT: 'Compte courant', CRYPTO: 'Crypto', NON_COTE: 'Non coté (startups)', AUTRE: 'Autre',
 };
 export const ACCOUNT_TYPES = Object.keys(ACCOUNT_TYPE_LABELS) as AccountType[];
 /** Comptes dont la valeur est un solde saisi (pas de titres). */
@@ -33,12 +33,12 @@ export const BALANCE_ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set<AccountTy
   'LIVRET_A', 'LDDS', 'LEP', 'CEL', 'PEL', 'LIVRET_BANCAIRE', 'COMPTE_COURANT',
 ]);
 export const INVESTMENT_ACCOUNT_TYPES: ReadonlySet<AccountType> = new Set<AccountType>([
-  'PEA', 'PEA_PME', 'CTO', 'ASSURANCE_VIE', 'PER', 'CRYPTO', 'AUTRE',
+  'PEA', 'PEA_PME', 'CTO', 'ASSURANCE_VIE', 'PER', 'CRYPTO', 'NON_COTE', 'AUTRE',
 ]);
 
 export const ASSET_CLASS_LABELS: Record<AssetClass, string> = {
   ACTIONS: 'Actions', OBLIGATIONS: 'Obligations / fonds €', CRYPTO: 'Crypto', IMMOBILIER: 'Immobilier',
-  CASH: 'Liquidités', BIENS: 'Biens', AUTRE: 'Autre',
+  CASH: 'Liquidités', BIENS: 'Biens', NON_COTE: 'Non coté (bloqué)', AUTRE: 'Autre',
 };
 export const ASSET_CLASSES = Object.keys(ASSET_CLASS_LABELS) as AssetClass[];
 
