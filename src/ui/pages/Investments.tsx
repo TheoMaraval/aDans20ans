@@ -1,5 +1,8 @@
 import { useMemo, useState } from 'react';
 import { accountPerformance } from '../../core/performance';
+import { periodPnl, periodStart, PNL_PERIODS, type PnlPeriod } from '../../core/pnl';
+
+const PERIOD_LABEL: Record<PnlPeriod, string> = { '1J': '1 jour', '1S': '1 semaine', '1M': '1 mois', '6M': '6 mois', '1A': '1 an', MAX: 'depuis le début' };
 import { ACCOUNT_TYPE_LABELS, INVESTMENT_ACCOUNT_TYPES, type PositionView } from '../../core/types';
 import { PriceChart } from '../components/charts';
 import { Sheet } from '../components/Sheet';
@@ -24,6 +27,7 @@ export default function Investments() {
   const v = e.vault;
   const accounts = v.accounts.filter((a) => INVESTMENT_ACCOUNT_TYPES.has(a.type) && !a.archived);
   const [sel, setSel] = useState('all');
+  const [period, setPeriod] = useState<PnlPeriod>('1M');
   const [sheet, setSheet] = useState<S>(null);
   const close = () => setSheet(null);
   const ids = sel === 'all' ? accounts.map((a) => a.id) : [sel];
@@ -39,7 +43,9 @@ export default function Investments() {
   const netDeposits = e.transactions.filter((t) => ids.includes(t.accountId) && t.date <= e.today)
     .reduce((s, t) => s + (t.type === 'DEPOSIT' ? t.amount ?? 0 : t.type === 'WITHDRAWAL' ? -(t.amount ?? 0) : 0), 0);
   const gain = value - netDeposits;
-  const day = positions.reduce((s, p) => s + (p.changePct1d != null ? p.value - p.value / (1 + p.changePct1d) : 0), 0);
+  // P&L de la période : variation de valeur hors argent ajouté ou retiré (un achat n'est pas un gain).
+  const pnl = useMemo(() => periodPnl(e.ctx, ids, periodStart(period, e.today, v), e.today), [e, ids.join(), period, v]);
+  const posPnl = (p: { accountId: string; instrumentId: string }) => pnl.byPosition[`${p.accountId}|${p.instrumentId}`];
   const perf = useMemo(() => accountPerformance(e.ctx, ids, value, e.today), [e, ids.join(), value]);
   const fondsEuro = account && (account.type === 'ASSURANCE_VIE' || account.type === 'PER');
   const instName = (id: string) => v.instruments.find((i) => i.id === id)?.name ?? '?';
@@ -64,10 +70,11 @@ export default function Investments() {
               <div>
                 <div className="text-sm text-mute">{account ? `${ACCOUNT_TYPE_LABELS[account.type]}${account.institution ? ` · ${account.institution}` : ''}` : 'Tous les comptes'}</div>
                 <div className="num text-3xl font-bold">{f.eur(value)}</div>
-                <Delta value={day}>{f.signed(day)} aujourd'hui</Delta>
+                <div className="text-sm"><Delta value={pnl.pnl}>{f.signed(pnl.pnl)} ({pct(pnl.pct)})</Delta> <span className="text-mute">{PERIOD_LABEL[period]}</span></div>
               </div>
               {account && <Button size="sm" variant="ghost" onClick={() => setSheet({ k: 'account', id: account.id })} aria-label="Modifier le compte"><EditIcon /></Button>}
             </div>
+            <div className="mt-3"><Tabs options={PNL_PERIODS} value={period} onChange={setPeriod} /></div>
             <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-5">
               <Stat label="Gain total" value={<Delta value={gain}>{f.signed(gain)}</Delta>} sub={netDeposits > 0 ? <span className="text-mute"><Delta value={gain / netDeposits} /> des versements ({f.eur(netDeposits)})</span> : undefined} />
               <Stat label="Plus-value latente" value={<Delta value={unreal}>{f.signed(unreal)}</Delta>} sub={<Delta value={cost ? unreal / cost : 0} />} />
@@ -89,7 +96,7 @@ export default function Investments() {
               <Card className="hidden overflow-x-auto p-0 md:block">
                 <table className="w-full text-sm">
                   <thead className="text-left text-xs text-mute"><tr className="border-b border-line">
-                    {['Actif', 'Qté', 'PRU', 'Cours', 'Valeur', '+/- value', 'Jour', 'Poids'].map((h, i) => <th key={h} className={`px-4 py-3 font-medium ${i ? 'text-right' : ''}`}>{h}</th>)}
+                    {['Actif', 'Qté', 'PRU', 'Cours', 'Valeur', '+/- latente', `P&L ${PNL_PERIODS.find((x) => x.value === period)!.label}`, 'Poids'].map((h, i) => <th key={h} className={`px-4 py-3 font-medium ${i ? 'text-right' : ''}`}>{h}</th>)}
                   </tr></thead>
                   <tbody className="whitespace-nowrap">{positions.map((p) => (
                     <tr key={p.accountId + p.instrumentId} onClick={() => setSheet({ k: 'pos', p })} className="cursor-pointer border-b border-line last:border-0 hover:bg-surface2/50">
@@ -99,14 +106,14 @@ export default function Investments() {
                       <td className="num px-4 text-right">{f.money(p.price, p.currency)}{p.priceSource !== 'live' && p.priceSource !== 'quote' && p.priceSource !== 'close' && <Badge tone="warn">{p.priceSource === 'manual' ? 'manuel' : 'ancien'}</Badge>}</td>
                       <td className="num px-4 text-right font-medium">{f.eur(p.value)}</td>
                       <td className="num px-4 text-right"><Delta value={p.unrealized}>{f.signed(p.unrealized)}</Delta><div className="text-xs"><Delta value={p.unrealizedPct} /></div></td>
-                      <td className="px-4 text-right"><Delta value={p.changePct1d} /></td>
+                      <td className="num px-4 text-right"><Delta value={posPnl(p)?.pnl}>{f.signed(posPnl(p)?.pnl ?? 0)}</Delta><div className="text-xs"><Delta value={posPnl(p)?.pct} /></div></td>
                       <td className="num px-4 text-right text-mute">{pct(p.weight, false)}</td>
                     </tr>
                   ))}</tbody>
                 </table>
               </Card>
               <Card className="py-1 md:hidden">
-                {positions.map((p) => <Row key={p.accountId + p.instrumentId} onClick={() => setSheet({ k: 'pos', p })} left={p.name} sub={`${qty(p.quantity)} × ${f.money(p.price, p.currency)}`} right={f.eur(p.value)} subRight={<Delta value={p.unrealizedPct}>{f.signed(p.unrealized)} ({pct(p.unrealizedPct)})</Delta>} />)}
+                {positions.map((p) => <Row key={p.accountId + p.instrumentId} onClick={() => setSheet({ k: 'pos', p })} left={p.name} sub={`${qty(p.quantity)} × ${f.money(p.price, p.currency)}`} right={f.eur(p.value)} subRight={<Delta value={posPnl(p)?.pnl}>{f.signed(posPnl(p)?.pnl ?? 0)} ({pct(posPnl(p)?.pct)}) · {PNL_PERIODS.find((x) => x.value === period)!.label}</Delta>} />)}
               </Card>
             </>
           )}
