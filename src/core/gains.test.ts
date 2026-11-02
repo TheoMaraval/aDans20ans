@@ -26,7 +26,7 @@ describe('plus-values du patrimoine', () => {
     expect(g.investPct).toBeCloseTo(0.25, 9);
   });
   it('les livrets ne comptent pas comme placements', () => {
-    expect(g.investValue).toBe(1500);
+    expect(g.netDeposits).toBe(1200); // le Livret A (5 000 €) n'est ni un versement ni un gain
   });
   it('plus-value immobilière à la quote-part', () => {
     expect(g.realEstateGain).toBe(20000);
@@ -38,5 +38,23 @@ describe('fonds euros saisi comme solde', () => {
     const v2 = makeVault({ ...v, accounts: [...v.accounts, acc({ id: 'av', type: 'ASSURANCE_VIE', balanceHistory: [{ date: '2024-01-01', balance: 8200 }] })] });
     const g2 = gainsSummary(buildEngine(v2, prices({ closes: { X: { '2024-03-01': 120 } } }), '2024-03-01'));
     expect(g2.investGain).toBe(300);
+  });
+});
+
+describe('plus-values sur une période', () => {
+  const e = buildEngine(v, prices({ closes: { X: { '2024-01-01': 100, '2024-01-15': 110, '2024-03-01': 120 } } }), '2024-03-01');
+  it('du 15/01 au 01/03 : +100 de cours sur X, +100 réalisé sur M (vendu le 01/02)', () => {
+    const g = gainsSummary(e, '2024-01-15');
+    // valeur au 15/01 : 10 × 110 + 2 × (prix de transaction 100) = 1 300 ; au 01/03 : 1 500 ; aucun apport
+    expect(g.investGain).toBeCloseTo(200, 9);
+    expect(g.realized).toBeCloseTo(100, 9);
+    expect(g.unrealized).toBeCloseTo(100, 9);
+    expect(g.investPct).toBeCloseTo(200 / 1300, 9);
+  });
+  it('immobilier : variation d\'estimation sur la période', () => {
+    // 2023 → 2024 : estimation constante après le 01/01/2023
+    expect(gainsSummary(e, '2023-06-01').realEstateGain).toBe(0);
+    // depuis avant l'achat : plus-value complète
+    expect(gainsSummary(e, '2019-01-01').realEstateGain).toBe(20000);
   });
 });

@@ -5,7 +5,7 @@ import { addDays, addMonths } from '../../core/dates';
 import { scheduleDates } from '../../core/dca';
 import { externalFlows, periodChange } from '../../core/performance';
 import { gainsSummary } from '../../core/gains';
-import { ASSET_CLASS_LABELS, BALANCE_ACCOUNT_TYPES, GROUP_LABELS, type AssetClass, type GroupKey } from '../../core/types';
+import { ASSET_CLASS_LABELS, BALANCE_ACCOUNT_TYPES, GROUP_LABELS, INVESTMENT_ACCOUNT_TYPES, type AssetClass, type GroupKey } from '../../core/types';
 import { Donut, NetWorthChart } from '../components/charts';
 import { PricesStatus } from '../components/PricesStatus';
 import { AlertItem, Button, Card, Delta, Empty, PageHeader, Row, SectionTitle, Stat, Tabs } from '../components/ui';
@@ -13,6 +13,7 @@ import { useEngine, useFmt, useHistory } from '../hooks';
 import { dateFr, pct } from '../lib/format';
 
 type Range = '1S' | '1M' | 'YTD' | '1A' | 'MAX';
+const RANGE_TEXT: Record<Range, string> = { '1S': 'sur 1 semaine', '1M': 'sur 1 mois', YTD: 'depuis le 1er janvier', '1A': 'sur 1 an', MAX: 'depuis le début' };
 const RANGES: { value: Range; label: string }[] = [{ value: '1S', label: '1S' }, { value: '1M', label: '1M' }, { value: 'YTD', label: 'YTD' }, { value: '1A', label: '1A' }, { value: 'MAX', label: 'Max' }];
 
 const groupLink = (k: string) => k === 'IMMOBILIER' ? '/immobilier' : k === 'BIENS' ? '/biens' : BALANCE_ACCOUNT_TYPES.has(k as never) ? '/epargne' : '/investissements';
@@ -25,9 +26,11 @@ export default function Home() {
   const [split, setSplit] = useState<'class' | 'group'>('class');
   const cur = e.current;
   const alerts = useMemo(() => computeAlerts(e), [e]);
-  const gains = useMemo(() => gainsSummary(e), [e]);
 
   const start = range === '1S' ? addDays(e.today, -7) : range === '1M' ? addMonths(e.today, -1) : range === 'YTD' ? `${Number(e.today.slice(0, 4)) - 1}-12-31` : range === '1A' ? addMonths(e.today, -12) : '0000';
+  // Plus-values de la période sélectionnée (Max : depuis le début).
+  const gains = useMemo(() => gainsSummary(e, range === 'MAX' ? undefined : start), [e, range, start]);
+  const hasInvest = e.vault.accounts.some((a) => INVESTMENT_ACCOUNT_TYPES.has(a.type));
   const pts = history.filter((s) => s.date >= start);
   const first = pts[0];
   const change = first && pts.length > 1 ? periodChange(first.net, cur.net, externalFlows(e.ctx, first.date, e.today)) : null;
@@ -63,20 +66,22 @@ export default function Home() {
         <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-mute">Brut {f.eur(cur.gross)} · Dettes {f.eur(cur.debts)} · <PricesStatus /></div>
       </section>
 
-      {(gains.netDeposits > 0 || gains.hasRealEstate) && (
+      <div className="mb-3"><Tabs options={RANGES} value={range} onChange={setRange} /></div>
+
+      {(hasInvest || gains.hasRealEstate) && (
         <Card className="mb-4">
+          <div className="mb-3 text-sm text-mute">Plus-values <b className="text-ink">{RANGE_TEXT[range]}</b></div>
           <div className={`grid grid-cols-2 gap-4 ${gains.hasRealEstate ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
-            <Stat label="Gain total des placements" value={<Delta value={gains.investGain}>{f.signed(gains.investGain)}</Delta>}
-              sub={gains.investPct !== null ? <span className="text-mute"><Delta value={gains.investPct} /> des versements ({f.eur(gains.netDeposits)})</span> : undefined} />
-            <Stat label="dont plus-value latente" value={<Delta value={gains.unrealized}>{f.signed(gains.unrealized)}</Delta>} />
+            <Stat label={range === 'MAX' ? 'Gain total des placements' : 'Gain des placements'} value={<Delta value={gains.investGain}>{f.signed(gains.investGain)}</Delta>}
+              sub={gains.investPct !== null ? <span className="text-mute"><Delta value={gains.investPct} />{range === 'MAX' ? ` des versements (${f.eur(gains.netDeposits)})` : ''}</span> : undefined} />
+            <Stat label={range === 'MAX' ? 'dont plus-value latente' : 'dont variation latente'} value={<Delta value={gains.unrealized}>{f.signed(gains.unrealized)}</Delta>} />
             <Stat label="dont réalisé + dividendes" value={<Delta value={gains.realized}>{f.signed(gains.realized)}</Delta>} />
-            {gains.hasRealEstate && <Stat label="Plus-value immobilière" value={<Delta value={gains.realEstateGain}>{f.signed(gains.realEstateGain)}</Delta>} sub={<span className="text-mute">estimation − prix d'achat</span>} />}
+            {gains.hasRealEstate && <Stat label={range === 'MAX' ? 'Plus-value immobilière' : 'Évolution immobilière'} value={<Delta value={gains.realEstateGain}>{f.signed(gains.realEstateGain)}</Delta>} sub={<span className="text-mute">{range === 'MAX' ? "estimation − prix d'achat" : "variation de l'estimation"}</span>} />}
           </div>
         </Card>
       )}
 
       <Card className="mb-4">
-        <div className="mb-2"><Tabs options={RANGES} value={range} onChange={setRange} /></div>
         {pts.length > 1 ? <NetWorthChart data={pts} hide={f.hide} /> : <div className="py-16 text-center text-sm text-mute">Pas encore d'historique sur cette période.</div>}
       </Card>
 
