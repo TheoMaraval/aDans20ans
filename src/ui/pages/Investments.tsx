@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { accountPerformance } from '../../core/performance';
 import { periodPnl, periodStart, PNL_PERIODS, type PnlPeriod } from '../../core/pnl';
+import { balanceAt } from '../../core/savings';
 
 const PERIOD_LABEL: Record<PnlPeriod, string> = { '1J': '1 jour', '1S': '1 semaine', '1M': '1 mois', '6M': '6 mois', '1A': '1 an', MAX: 'depuis le début' };
 import { ACCOUNT_TYPE_LABELS, INVESTMENT_ACCOUNT_TYPES, type PositionView } from '../../core/types';
@@ -42,7 +43,9 @@ export default function Investments() {
   // Gain total = valeur − apports nets, comme le « depuis le début » des courtiers.
   const netDeposits = e.transactions.filter((t) => ids.includes(t.accountId) && t.date <= e.today)
     .reduce((s, t) => s + (t.type === 'DEPOSIT' ? t.amount ?? 0 : t.type === 'WITHDRAWAL' ? -(t.amount ?? 0) : 0), 0);
-  const gain = value - netDeposits;
+  // Les soldes saisis (fonds euros) n'ont pas de versements connus : exclus du gain.
+  const enteredBalances = accounts.filter((a) => ids.includes(a.id)).reduce((s, a) => s + balanceAt(a, e.today), 0);
+  const gain = value - enteredBalances - netDeposits;
   // P&L de la période : variation de valeur hors argent ajouté ou retiré (un achat n'est pas un gain).
   const pnl = useMemo(() => periodPnl(e.ctx, ids, periodStart(period, e.today, v), e.today), [e, ids.join(), period, v]);
   const posPnl = (p: { accountId: string; instrumentId: string }) => pnl.byPosition[`${p.accountId}|${p.instrumentId}`];

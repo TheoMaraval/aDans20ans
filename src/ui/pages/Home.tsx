@@ -4,10 +4,11 @@ import { computeAlerts } from '../../core/alerts';
 import { addDays, addMonths } from '../../core/dates';
 import { scheduleDates } from '../../core/dca';
 import { externalFlows, periodChange } from '../../core/performance';
+import { gainsSummary } from '../../core/gains';
 import { ASSET_CLASS_LABELS, BALANCE_ACCOUNT_TYPES, GROUP_LABELS, type AssetClass, type GroupKey } from '../../core/types';
 import { Donut, NetWorthChart } from '../components/charts';
 import { PricesStatus } from '../components/PricesStatus';
-import { AlertItem, Button, Card, Delta, Empty, PageHeader, Row, SectionTitle, Tabs } from '../components/ui';
+import { AlertItem, Button, Card, Delta, Empty, PageHeader, Row, SectionTitle, Stat, Tabs } from '../components/ui';
 import { useEngine, useFmt, useHistory } from '../hooks';
 import { dateFr, pct } from '../lib/format';
 
@@ -24,6 +25,7 @@ export default function Home() {
   const [split, setSplit] = useState<'class' | 'group'>('class');
   const cur = e.current;
   const alerts = useMemo(() => computeAlerts(e), [e]);
+  const gains = useMemo(() => gainsSummary(e), [e]);
 
   const start = range === '1S' ? addDays(e.today, -7) : range === '1M' ? addMonths(e.today, -1) : range === 'YTD' ? `${Number(e.today.slice(0, 4)) - 1}-12-31` : range === '1A' ? addMonths(e.today, -12) : '0000';
   const pts = history.filter((s) => s.date >= start);
@@ -60,6 +62,18 @@ export default function Home() {
         </div>
         <div className="mt-1 flex flex-wrap gap-x-1 text-xs text-mute">Brut {f.eur(cur.gross)} · Dettes {f.eur(cur.debts)} · <PricesStatus /></div>
       </section>
+
+      {(gains.netDeposits > 0 || gains.hasRealEstate) && (
+        <Card className="mb-4">
+          <div className={`grid grid-cols-2 gap-4 ${gains.hasRealEstate ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
+            <Stat label="Gain total des placements" value={<Delta value={gains.investGain}>{f.signed(gains.investGain)}</Delta>}
+              sub={gains.investPct !== null ? <span className="text-mute"><Delta value={gains.investPct} /> des versements ({f.eur(gains.netDeposits)})</span> : undefined} />
+            <Stat label="dont plus-value latente" value={<Delta value={gains.unrealized}>{f.signed(gains.unrealized)}</Delta>} />
+            <Stat label="dont réalisé + dividendes" value={<Delta value={gains.realized}>{f.signed(gains.realized)}</Delta>} />
+            {gains.hasRealEstate && <Stat label="Plus-value immobilière" value={<Delta value={gains.realEstateGain}>{f.signed(gains.realEstateGain)}</Delta>} sub={<span className="text-mute">estimation − prix d'achat</span>} />}
+          </div>
+        </Card>
+      )}
 
       <Card className="mb-4">
         <div className="mb-2"><Tabs options={RANGES} value={range} onChange={setRange} /></div>
